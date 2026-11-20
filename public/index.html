@@ -4,243 +4,553 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Deal Radar Germany</title>
-<meta name="description" content="Live Black Week deals and Preisfehler (price errors) in Germany, updated every few minutes.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23e63312'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>€</text></svg>">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<meta name="description" content="Live Black Week deals and Preisfehler (price errors) in Germany, ranked for you, updated every few minutes.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23d6331a'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>€</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..900&family=Inter:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: sticky control strip, dense deal list (thumbnail · title · price column), feed health footer */
+/* Layout: top bar · left sidebar (filters + profile) on wide screens · deal area that switches List / Grid / Lanes. Lanes = side-by-side live columns for ultrawide. */
 :root{
-  --bg:#f3f4f2; --surface:#fff; --ink:#15171a; --muted:#61666e; --line:#e1e3df;
-  --red:#e63312; --red-soft:#fde6e0; --green:#16804a; --green-soft:#dff3e7; --amber:#9a5d00; --amber-soft:#fcefd6; --blue:#1d5fd0; --blue-soft:#e3ecfb;
-  --display:"Archivo",ui-sans-serif,system-ui,sans-serif; --body:"Inter",ui-sans-serif,system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --bg:#f6f6f4; --surface:#ffffff; --raised:#ffffff; --ink:#111316; --ink-2:#3b4048; --muted:#5f6670; --line:#dcdedb; --line-2:#ebecea;
+  --red:#c92a12; --red-soft:#fdebe6; --green:#11733f; --green-soft:#e1f3e8; --amber:#8a5300; --amber-soft:#fcf0d8; --blue:#1a56c4; --blue-soft:#e6eefc;
+  --shadow:0 12px 32px rgba(17,19,22,.16),0 2px 6px rgba(17,19,22,.08);
+  --display:"Archivo",ui-sans-serif,system-ui,sans-serif; --body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --fs:16px; --page:1280px;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0f1012; --surface:#17191c; --ink:#eceee9; --muted:#9a9fa6; --line:#272a2e;
-  --red:#ff5a3c; --red-soft:#3a1810; --green:#45cf82; --green-soft:#11291b; --amber:#f2b14e; --amber-soft:#2f220c; --blue:#7aa7ff; --blue-soft:#14213a; color-scheme:dark}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121315; --surface:#1b1d20; --raised:#23262a; --ink:#f1f2ef; --ink-2:#d0d3d6; --muted:#a3a9b1; --line:#30343a; --line-2:#26292e;
+  --red:#ff6a4d; --red-soft:#3b1a12; --green:#52d18c; --green-soft:#13301f; --amber:#f3b453; --amber-soft:#33250d; --blue:#86adff; --blue-soft:#17233d;
+  --shadow:0 14px 36px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121315; --surface:#1b1d20; --raised:#23262a; --ink:#f1f2ef; --ink-2:#d0d3d6; --muted:#a3a9b1; --line:#30343a; --line-2:#26292e;
+  --red:#ff6a4d; --red-soft:#3b1a12; --green:#52d18c; --green-soft:#13301f; --amber:#f3b453; --amber-soft:#33250d; --blue:#86adff; --blue-soft:#17233d;
+  --shadow:0 14px 36px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4); color-scheme:dark}
+:root[data-size="s"]{--fs:15px} :root[data-size="l"]{--fs:18px} :root[data-size="xl"]{--fs:20px}
+:root[data-width="wide"]{--page:1880px} :root[data-width="full"]{--page:100%}
+
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px)}
-.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header{padding-block:22px 14px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
-h1{font:900 clamp(28px,5vw,44px)/.95 var(--display);font-stretch:118%;margin:0;letter-spacing:-.01em;text-transform:uppercase}
-h1 span{color:var(--red)}
-.live{display:flex;gap:8px;align-items:center;font:500 13px var(--mono);color:var(--muted)}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green)}
+body{background:var(--bg);color:var(--ink);font:400 var(--fs)/1.55 var(--body);-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top,0px)}
+button,input,select{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:6px}
+.page{max-width:var(--page);margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.top .page{display:flex;align-items:center;gap:12px 18px;padding-block:12px;flex-wrap:wrap}
+.brand{font:900 1.5em/1 var(--display);font-stretch:115%;letter-spacing:-.01em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--red)}
+.live{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.875em;white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--green)}
 .dot.stale{background:var(--amber)}
-@media (prefers-reduced-motion:no-preference){.dot{animation:pulse 2s infinite}}
-@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
-.controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px;display:grid;gap:10px}
-.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-.tab{flex:none;font:600 13px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;display:flex;gap:6px;align-items:center}
-.tab .n{font:700 11px var(--mono);color:var(--muted)}
-.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.tab[aria-selected="true"] .n{color:inherit;opacity:.7}
-.tab.pf{border-color:var(--red);color:var(--red)}
-.tab.pf[aria-selected="true"]{background:var(--red);color:#fff}
-.row{display:flex;gap:8px;flex-wrap:wrap}
-input,select,button{font:14px var(--body);color:var(--ink)}
-input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
-#q{flex:1 1 200px}
-#max{width:110px}
-.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600}
-.btn.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
-:focus-visible{outline:2px solid var(--red);outline-offset:2px}
-.watchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
-#kw{flex:1 1 240px}
-main{padding-block:14px 40px;display:grid;gap:8px}
-.deal{display:grid;grid-template-columns:72px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px 10px 10px;color:inherit;text-decoration:none}
-.deal:hover{border-color:var(--muted)}
-.deal.isnew{box-shadow:inset 3px 0 0 var(--blue)}
-.deal.match{box-shadow:inset 3px 0 0 var(--green)}
-.deal.pf{border-color:color-mix(in srgb,var(--red) 45%,var(--line))}
-.thumb{width:72px;height:72px;border-radius:8px;background:var(--bg);object-fit:contain;display:block}
-.thumb.ph{display:grid;place-items:center;font:900 22px var(--display);color:var(--muted)}
-.body{min-width:0;display:grid;gap:4px}
-.title{font:600 15px/1.3 var(--body);margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.meta{display:flex;flex-wrap:wrap;gap:4px 10px;font:500 12px var(--mono);color:var(--muted);align-items:center}
-.b{font:700 10.5px var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:4px}
-.b.pf{background:var(--red);color:#fff}
-.b.free{background:var(--green-soft);color:var(--green)}
-.b.hot{background:var(--amber-soft);color:var(--amber)}
-.b.bw{background:var(--ink);color:var(--bg)}
-.b.new{background:var(--blue-soft);color:var(--blue)}
-.b.drop{background:var(--green);color:#fff}
-.price{text-align:right;font:700 20px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.price.free{color:var(--green)}
-.price small{display:block;font:500 11px var(--mono);color:var(--muted)}
-.empty,.notice{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
-.notice{text-align:left;font-size:13px;padding:12px 14px;border-style:solid;background:var(--amber-soft);color:var(--amber);border-color:transparent}
-.more{justify-self:center}
-footer{border-top:1px solid var(--line);padding-block:18px 32px;font-size:12.5px;color:var(--muted);display:grid;gap:8px}
-.feeds{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 12px var(--mono)}
-.ok{color:var(--green)} .bad{color:var(--red)}
-footer a{color:inherit}
-@media (max-width:560px){
-  .deal{grid-template-columns:56px 1fr;grid-template-areas:"t b" "t p";gap:4px 12px}
-  .thumb{width:56px;height:56px;grid-area:t}
-  .body{grid-area:b}
-  .price{grid-area:p;text-align:left;font-size:17px}
-  .price small{display:inline;margin-left:6px}
+@media (prefers-reduced-motion:no-preference){.dot:not(.stale){animation:pulse 2s infinite}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 55%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.search{flex:1 1 280px;position:relative;min-width:0}
+.search input{width:100%;padding:11px 14px 11px 40px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);font-size:1em}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.tbtn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;font-weight:600;font-size:.9375em;white-space:nowrap}
+.tbtn:hover{border-color:var(--muted)}
+.tbtn.on{border-color:var(--blue);background:var(--blue-soft);color:var(--blue)}
+
+/* shell */
+.shell{display:grid;grid-template-columns:1fr;gap:20px;padding-block:18px 48px}
+@media (min-width:1100px){.shell{grid-template-columns:260px minmax(0,1fr)}}
+aside{display:grid;gap:18px;align-content:start}
+@media (min-width:1100px){aside{position:sticky;top:84px;max-height:calc(100vh - 100px);overflow:auto;padding-right:4px}}
+.nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+@media (min-width:1100px){.nav{flex-direction:column;overflow:visible}}
+.nav button{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;border:1.5px solid transparent;background:transparent;cursor:pointer;font-weight:600;text-align:left}
+@media (max-width:1099px){.nav button{border-color:var(--line);background:var(--surface)}}
+.nav button:hover{background:var(--surface);border-color:var(--line)}
+.nav button[aria-current="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.nav .n{font-weight:500;font-size:.8125em;opacity:.7;font-variant-numeric:tabular-nums}
+.nav .pf:not([aria-current="true"]){color:var(--red)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:12px}
+.box h3{margin:0;font:800 .8125em/1.2 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.field{display:grid;gap:5px;font-size:.9375em}
+.field label,.lbl{font-weight:600;color:var(--ink-2)}
+.field input,.field select{padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);width:100%;min-width:0}
+.check{display:flex;gap:9px;align-items:center;font-size:.9375em;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--ink);flex:none}
+.filters-toggle{display:none}
+@media (max-width:1099px){
+  .filters-toggle{display:inline-flex}
+  aside .box{display:none}
+  aside.open .box{display:grid}
 }
+.hidden-note{font-size:.875em;color:var(--muted)}
+.hidden-note button{background:none;border:0;padding:0;color:var(--blue);cursor:pointer;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+
+/* deal area */
+.area{min-width:0;display:grid;gap:14px;align-content:start}
+.notice{padding:12px 16px;border-radius:12px;background:var(--amber-soft);color:var(--amber);font-weight:500}
+.list{display:grid;gap:10px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.lanes{display:grid;gap:16px;grid-auto-flow:column;grid-auto-columns:minmax(min(88vw,400px),1fr);overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
+.lane{display:grid;grid-template-rows:auto 1fr;min-width:0;scroll-snap-align:start;background:color-mix(in srgb,var(--surface) 55%,var(--bg));border:1px solid var(--line);border-radius:16px;max-height:calc(100vh - 120px);position:sticky;top:84px}
+.lane-h{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px;border-bottom:1px solid var(--line)}
+.lane-h h2{margin:0;font:800 1.0625em/1.2 var(--display);font-stretch:108%}
+.lane-h span{color:var(--muted);font-size:.8125em}
+.lane-b{overflow:auto;padding:10px;display:grid;gap:10px;align-content:start}
+
+.deal{position:relative;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;display:grid;gap:14px;grid-template-columns:88px minmax(0,1fr) auto;align-items:center;padding:12px 16px 12px 12px;transition:border-color .12s}
+.deal:hover,.deal.active{border-color:var(--ink-2)}
+.deal.pf{border-color:color-mix(in srgb,var(--red) 50%,var(--line))}
+.deal.isnew::before,.deal.match::before{content:"";position:absolute;left:-1.5px;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--blue)}
+.deal.match::before{background:var(--green)}
+.thumb{width:88px;height:88px;border-radius:10px;background:#fff;object-fit:contain;display:block;border:1px solid var(--line-2)}
+.thumb.ph{display:grid;place-items:center;font:900 1.6em var(--display);color:var(--muted);background:var(--bg)}
+.d-body{min-width:0;display:grid;gap:6px}
+.d-title{margin:0;font-weight:600;font-size:1.0625em;line-height:1.38;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none}
+.d-title:hover{text-decoration:underline;text-underline-offset:3px}
+.d-meta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;color:var(--muted);font-size:.875em}
+.store{font-weight:600;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.78125em;font-weight:700;padding:3px 9px;border-radius:999px;line-height:1.5;white-space:nowrap}
+.c-pf{background:var(--red);color:#fff}
+.c-free{background:var(--green-soft);color:var(--green)}
+.c-hot{background:var(--amber-soft);color:var(--amber)}
+.c-new{background:var(--blue-soft);color:var(--blue)}
+.c-why{background:var(--bg);color:var(--ink-2);border:1px solid var(--line);font-weight:600}
+.c-drop{background:var(--green);color:#fff}
+.d-price{text-align:right;display:grid;gap:2px;justify-items:end;font-variant-numeric:tabular-nums}
+.now{font:800 1.5em/1.1 var(--body);letter-spacing:-.01em;white-space:nowrap}
+.now.free{color:var(--green)}
+.was{color:var(--muted);text-decoration:line-through;font-size:.9375em}
+.save{font-weight:700;font-size:.875em;color:var(--green);white-space:nowrap}
+.info{margin-top:4px;border:1.5px solid var(--line);background:var(--bg);border-radius:8px;padding:4px 10px;font-size:.8125em;font-weight:600;cursor:pointer;white-space:nowrap}
+.info:hover{border-color:var(--ink-2)}
+
+/* grid + lanes cards are vertical */
+.grid .deal{grid-template-columns:1fr;align-items:start;padding:14px}
+.grid .deal .thumb{width:100%;height:150px}
+.lane .deal{grid-template-columns:72px minmax(0,1fr);gap:8px 12px;align-items:start;padding:12px}
+.lane .deal .thumb{width:72px;height:72px}
+.lane .deal-foot{grid-column:1/-1}
+.grid .d-price,.lane .d-price{justify-items:start;text-align:left;display:flex;align-items:baseline;justify-content:flex-start;gap:6px 12px;flex-wrap:wrap}
+.grid .info,.lane .info{margin:0 0 0 auto}
+.grid .deal-foot,.lane .deal-foot{display:block}
+.list .deal-foot{display:contents}
+@media (max-width:620px){
+  .list .deal{grid-template-columns:72px minmax(0,1fr);gap:6px 12px;align-items:start}
+  .list .thumb{width:72px;height:72px;grid-row:span 2}
+  .list .deal-foot{display:block;grid-column:1/-1}
+  .list .d-price{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-start;text-align:left;gap:4px 12px}
+  .list .info{margin:0 0 0 auto}
+  .top .page{gap:10px}
+  .tbtn{padding:9px 12px}
+}
+.more{justify-self:center}
+.empty{padding:32px;text-align:center;color:var(--muted);border:1.5px dashed var(--line);border-radius:14px}
+
+/* savings popover */
+#pop{position:fixed;z-index:50;width:min(400px,calc(100vw - 24px));background:var(--raised);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px;display:grid;gap:14px;font-size:.9375em;max-height:calc(100vh - 24px);overflow:auto}
+#pop h4{margin:0;font:800 .75em/1 var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.p-hero{display:grid;gap:4px}
+.p-price{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.p-price .now{font-size:1.75em}
+.p-save{font:800 1.25em/1.2 var(--body);color:var(--green)}
+.p-calc{background:var(--bg);border-radius:12px;padding:12px 14px;display:grid;gap:6px;font-variant-numeric:tabular-nums}
+.p-row{display:flex;justify-content:space-between;gap:12px}
+.p-row.total{border-top:1px solid var(--line);padding-top:6px;font-weight:700}
+.p-basis{font-size:.875em;color:var(--muted)}
+.p-steps{margin:0;padding-left:22px;display:grid;gap:6px}
+.code{display:inline-flex;align-items:center;gap:8px;font:700 .9375em ui-monospace,Menlo,monospace;background:var(--amber-soft);color:var(--amber);padding:3px 4px 3px 10px;border-radius:8px}
+.code button{border:0;background:var(--surface);color:var(--ink);border-radius:6px;padding:2px 8px;font:600 .8em var(--body);cursor:pointer}
+.p-sum{color:var(--ink-2);font-size:.9em;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.p-links{display:flex;gap:10px;flex-wrap:wrap}
+.p-links a{font-weight:600;text-decoration:none;padding:8px 14px;border-radius:10px;background:var(--ink);color:var(--bg)}
+.p-links a.sec{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.p-close{position:absolute;right:10px;top:10px;border:0;background:var(--bg);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;display:none}
+@media (hover:none){.p-close{display:block}}
+
+/* display panel */
+.panel{position:fixed;z-index:40;right:max(16px,env(safe-area-inset-right,0px));top:76px;width:min(340px,calc(100vw - 32px));background:var(--raised);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;display:grid;gap:14px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;border-radius:8px;padding:7px 6px;cursor:pointer;font-weight:600;font-size:.875em}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+footer{border-top:1px solid var(--line);padding-block:20px 36px;color:var(--muted);font-size:.875em;display:grid;gap:10px}
+.feeds{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8125em}
+.ok{color:var(--green)} .bad{color:var(--red)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Deal Radar <span>DE</span></h1>
+<div class="top">
+  <div class="page">
+    <div class="brand">Deal Radar <span>DE</span></div>
     <div class="live" aria-live="polite"><span class="dot" id="dot"></span><span id="updated">Loading…</span></div>
-  </header>
-
-  <div class="controls">
-    <div class="tabs" role="tablist" id="tabs"></div>
-    <div class="row">
-      <input id="q" type="search" placeholder="Search: PS5, OLED, Airfryer, Lego…" aria-label="Search deals">
-      <input id="max" type="number" min="0" step="1" placeholder="Max €" aria-label="Maximum price in euros">
-      <select id="store" aria-label="Store"><option value="">All stores</option></select>
-      <select id="sort" aria-label="Sort">
-        <option value="new">Newest</option>
-        <option value="cheap">Cheapest</option>
-        <option value="exp">Most expensive</option>
-      </select>
-      <button class="btn" id="notify" type="button">🔔 Alerts off</button>
-    </div>
-    <div class="watchbar">
-      <label for="kw">Watch keywords</label>
-      <input id="kw" type="text" placeholder="e.g. ps5, airpods, oled, dyson (comma-separated)">
-    </div>
+    <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search deals: PS5, OLED, Airfryer, Lego…" aria-label="Search deals"></label>
+    <button class="tbtn filters-toggle" id="filtersBtn" type="button" aria-expanded="false">Filters</button>
+    <button class="tbtn" id="notify" type="button">🔔 Alerts off</button>
+    <button class="tbtn" id="displayBtn" type="button" aria-expanded="false" aria-controls="panel">Display</button>
   </div>
+</div>
 
-  <main id="list"></main>
+<div class="page shell">
+  <aside id="aside">
+    <nav class="nav" id="nav" aria-label="Deal categories"></nav>
+    <div class="box">
+      <h3>Filters</h3>
+      <div class="field"><label for="sort">Sort by</label>
+        <select id="sort">
+          <option value="score">Best for me</option>
+          <option value="new">Newest</option>
+          <option value="pct">Biggest % saving</option>
+          <option value="eur">Biggest € saving</option>
+          <option value="cheap">Cheapest</option>
+          <option value="hot">Hottest (community votes)</option>
+        </select></div>
+      <div class="field"><label for="max">Max price (€)</label><input id="max" type="number" min="0" step="1" placeholder="Any"></div>
+      <div class="field"><label for="minpct">Min. saving</label>
+        <select id="minpct"><option value="0">Any</option><option value="20">20% or more</option><option value="40">40% or more</option><option value="60">60% or more</option></select></div>
+      <div class="field"><label for="store">Store</label><select id="store"><option value="">All stores</option></select></div>
+      <label class="check"><input type="checkbox" id="onlySave"> Only deals with a known saving</label>
+    </div>
+    <div class="box" id="profileBox">
+      <h3>My profile</h3>
+      <div class="lbl">I'm interested in</div>
+      <label class="check"><input type="checkbox" data-int="tech"> Tech &amp; gadgets</label>
+      <label class="check"><input type="checkbox" data-int="gaming"> Gaming</label>
+      <label class="check"><input type="checkbox" data-int="deals"> Price errors &amp; freebies</label>
+      <label class="check"><input type="checkbox" data-int="home"> Home, food &amp; everyday</label>
+      <div class="field"><label for="budget">Budget per deal</label>
+        <select id="budget"><option value="">No limit</option><option value="50">Up to 50 €</option><option value="200">Up to 200 €</option><option value="1000">Up to 1,000 €</option></select></div>
+      <div class="lbl">Hide</div>
+      <label class="check"><input type="checkbox" data-hide="leasing"> Car leasing</label>
+      <label class="check"><input type="checkbox" data-hide="travel"> Travel &amp; hotels</label>
+      <label class="check"><input type="checkbox" data-hide="contracts"> Phone &amp; internet contracts</label>
+      <div class="field"><label for="kw">Watch keywords</label><input id="kw" type="text" placeholder="ps5, airpods, oled, dyson"></div>
+    </div>
+  </aside>
 
-  <footer>
-    <div>Deals come from the public RSS feeds of mydealz, MyTopDeals, DealDoktor and mein-deal. A server job pulls them every few minutes, and this page checks for new data every 60 seconds. "Preisfehler" means a price error reported by the community. The store may cancel those orders, so pay by credit card or PayPal and don't count on delivery.</div>
-    <div class="feeds" id="feeds"></div>
-  </footer>
+  <main class="area">
+    <div id="notice"></div>
+    <div id="deals"></div>
+    <div class="hidden-note" id="hiddenNote"></div>
+  </main>
+</div>
+
+<div class="page"><footer>
+  <div>Deals come from the public RSS feeds of mydealz, MyTopDeals, DealDoktor and mein-deal, refreshed every few minutes. This page checks for new data every 60 seconds. Savings are calculated from the comparison price, list price (UVP) or regular price named in each deal post. If a post doesn't name one, the exact saving is shown as unknown. Stores often cancel Preisfehler orders, so pay by PayPal or credit card.</div>
+  <div class="feeds" id="feeds"></div>
+</footer></div>
+
+<div id="pop" hidden role="dialog" aria-label="Savings details"></div>
+
+<div class="panel" id="panel" hidden>
+  <div class="field"><span class="lbl">Layout</span><div class="seg" data-set="layout"><button data-v="list">List</button><button data-v="grid">Grid</button><button data-v="lanes">Lanes</button></div></div>
+  <div class="field"><span class="lbl">Page width</span><div class="seg" data-set="width"><button data-v="normal">Normal</button><button data-v="wide">Wide</button><button data-v="full">Full</button></div></div>
+  <div class="field"><span class="lbl">Text size</span><div class="seg" data-set="size"><button data-v="s">S</button><button data-v="m">M</button><button data-v="l">L</button><button data-v="xl">XL</button></div></div>
+  <div class="field"><span class="lbl">Theme</span><div class="seg" data-set="theme"><button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+  <p class="hidden-note" style="margin:0">On an ultrawide monitor, pick <b>Lanes</b> with <b>Full</b> width to see For you, Preisfehler, Hot and Newest side by side.</p>
 </div>
 
 <script>
-const TABS = [
-  ["all","All"],["preisfehler","Preisfehler"],["gratis","Free"],["hot","Hot"],["blackweek","Black Week"],
-  ["elektronik","Electronics"],["gaming","Gaming"],["watch","My watchlist"]
-];
-const store = {
-  get(k,d){try{const v=localStorage.getItem("dr-"+k);return v==null?d:JSON.parse(v)}catch{return d}},
-  set(k,v){try{localStorage.setItem("dr-"+k,JSON.stringify(v))}catch{}}
+/* ---------- state ---------- */
+const S = {
+  get(k,d){try{const v=localStorage.getItem("dr2-"+k);return v==null?d:JSON.parse(v)}catch{return d}},
+  set(k,v){try{localStorage.setItem("dr2-"+k,JSON.stringify(v))}catch{}}
 };
-let data = {deals:[],feeds:{}}, tab = store.get("tab","all"), shown = 60;
-const lastVisit = store.get("lastVisit", 0);
-let seenIds = new Set(store.get("seen", []));
-let notifyOn = store.get("notify", false) && "Notification" in window && Notification.permission === "granted";
+const DEFAULT_PROFILE = {interests:["tech","gaming","deals","home"], budget:"", hide:["leasing","travel"], kw:""};
+let profile = Object.assign({}, DEFAULT_PROFILE, S.get("profile", {}));
+let view = Object.assign({layout: innerWidth>=2200 ? "lanes" : "list", width: innerWidth>=2200 ? "full" : "normal", size:"m", theme:"auto"}, S.get("view", {}));
+let tab = S.get("tab","foryou"), shown = 60, laneShown = {};
+let data = {deals:[],feeds:{}};
+const lastVisit = S.get("lastVisit",0);
+let seen = new Set(S.get("seen",[]));
+let notifyOn = S.get("notify",false) && "Notification" in window && Notification.permission==="granted";
 const $ = id => document.getElementById(id);
-$("kw").value = store.get("kw","");
-const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const eur = n => n==null ? "" : n===0 ? "FREE" : n.toLocaleString("de-DE",{style:"currency",currency:"EUR",minimumFractionDigits:n%1?2:0});
-const kws = () => $("kw").value.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean);
-const matches = d => { const k=kws(); if(!k.length) return false; const t=(d.title+" "+d.merchant).toLowerCase(); return k.some(w=>t.includes(w)); };
-function ago(iso){ const s=(Date.now()-new Date(iso))/1000; if(s<60)return "just now"; if(s<3600)return Math.floor(s/60)+" min ago"; if(s<86400)return Math.floor(s/3600)+" h ago"; return Math.floor(s/86400)+" d ago"; }
-const inTab = (d,t) => t==="all" ? true : t==="watch" ? matches(d) : d.flags.includes(t);
 
-function renderTabs(){
-  $("tabs").innerHTML = TABS.map(([id,label])=>{
-    const n = data.deals.filter(d=>inTab(d,id)).length;
-    return `<button class="tab ${id==="preisfehler"?"pf":""}" role="tab" aria-selected="${tab===id}" data-t="${id}">${label} <span class="n">${n}</span></button>`;
+const TABS = [
+  ["foryou","For you"],["all","All deals"],["preisfehler","Preisfehler"],["gratis","Free"],["hot","Hot right now"],
+  ["blackweek","Black Week"],["tech","Tech"],["gaming","Gaming"],["home","Home & everyday"],["watch","My keywords"]
+];
+const LANES = [["foryou","For you"],["pfree","Preisfehler & free"],["hot","Hot right now"],["tech","Tech"],["gaming","Gaming"],["new","Newest"]];
+
+/* ---------- helpers ---------- */
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = (n,force2) => n==null ? "" : n===0 ? "Free" : n.toLocaleString("de-DE",{style:"currency",currency:"EUR",minimumFractionDigits:(force2||n%1)?2:0,maximumFractionDigits:2});
+const kws = () => profile.kw.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean);
+const kwHit = d => { const t=(d.title+" "+d.merchant).toLowerCase(); return kws().find(w=>t.includes(w)); };
+const hoursAgo = d => (Date.now()-new Date(d.published))/36e5;
+function ago(iso){const s=(Date.now()-new Date(iso))/1e3; if(s<60)return"just now"; if(s<3600)return Math.floor(s/60)+" min ago"; if(s<86400)return Math.floor(s/3600)+" h ago"; return Math.floor(s/86400)+" d ago";}
+const has = (d,f) => d.flags.includes(f);
+
+function hiddenByProfile(d){
+  if (profile.hide.some(h=>has(d,h))) return true;
+  if (profile.budget && d.price!=null && d.price > +profile.budget) return true;
+  return false;
+}
+function why(d){
+  const r=[]; const I=profile.interests;
+  const k=kwHit(d); if(k) r.push(`Matches “${k}”`);
+  if(I.includes("deals") && has(d,"preisfehler")) r.push("Price error");
+  else if(I.includes("deals") && has(d,"gratis")) r.push("Free");
+  if(I.includes("tech") && has(d,"tech")) r.push("Tech");
+  if(I.includes("gaming") && has(d,"gaming")) r.push("Gaming");
+  if(I.includes("home") && has(d,"home")) r.push("Home & everyday");
+  if(d.pctOff>=40) r.push(`−${d.pctOff}%`);
+  if(d.temperature>=200) r.push(`${d.temperature}° hot`);
+  return r;
+}
+function score(d){
+  const I=profile.interests; let s=0;
+  if(I.includes("tech")&&has(d,"tech")) s+=3;
+  if(I.includes("gaming")&&has(d,"gaming")) s+=3;
+  if(I.includes("home")&&has(d,"home")) s+=2;
+  if(I.includes("deals")){ if(has(d,"preisfehler")) s+=7; if(has(d,"gratis")) s+=3; }
+  if(kwHit(d)) s+=8;
+  if(d.pctOff) s+=Math.min(d.pctOff,90)/10;
+  if(d.temperature) s+=Math.min(Math.max(d.temperature,0),1200)/150;
+  if(has(d,"hot")) s+=2;
+  s += Math.max(0, 4 - hoursAgo(d)/6);
+  return s;
+}
+function inTab(d,t){
+  switch(t){
+    case "all": return true;
+    case "foryou": return score(d) >= 8;
+    case "watch": return !!kwHit(d);
+    case "pfree": return has(d,"preisfehler")||has(d,"gratis");
+    case "new": return true;
+    default: return has(d,t);
+  }
+}
+function sortList(l, by){
+  const f = {
+    score:(a,b)=>score(b)-score(a), new:(a,b)=>new Date(b.published)-new Date(a.published),
+    pct:(a,b)=>(b.pctOff??-1)-(a.pctOff??-1), eur:(a,b)=>(b.save??-1)-(a.save??-1),
+    cheap:(a,b)=>(a.price??1e9)-(b.price??1e9), hot:(a,b)=>(b.temperature??-1e4)-(a.temperature??-1e4)
+  }[by] || ((a,b)=>score(b)-score(a));
+  return l.sort(f);
+}
+function baseFilter(){
+  const q=$("q").value.trim().toLowerCase(), max=parseFloat($("max").value), st=$("store").value, minp=+$("minpct").value, only=$("onlySave").checked;
+  return data.deals.filter(d => !hiddenByProfile(d)
+    && (!q || (d.title+" "+d.merchant+" "+d.category+" "+(d.summary||"")).toLowerCase().includes(q))
+    && (isNaN(max) || (d.price!=null && d.price<=max))
+    && (!st || d.merchant===st)
+    && (!minp || (d.pctOff??0)>=minp)
+    && (!only || d.save!=null));
+}
+
+/* ---------- render ---------- */
+function card(d){
+  const isNew = lastVisit>0 && new Date(d.firstSeen).getTime() > lastVisit;
+  const k = kwHit(d), pf = has(d,"preisfehler");
+  const chips = [
+    pf && `<span class="chip c-pf">Preisfehler</span>`,
+    has(d,"gratis") && `<span class="chip c-free">Free</span>`,
+    d.temperature!=null && d.temperature>=100 && `<span class="chip c-hot">${d.temperature}°</span>`,
+    d.priceDrop && `<span class="chip c-drop">Price dropped from ${eur(d.priceDrop.from)}</span>`,
+    isNew && `<span class="chip c-new">New</span>`,
+    ...(tab==="foryou"||view.layout==="lanes" ? why(d).filter(w=>!["Price error","Free"].includes(w)&&!/°/.test(w)&&!/^−\d/.test(w)).slice(0,2).map(w=>`<span class="chip c-why">${esc(w)}</span>`) : [])
+  ].filter(Boolean).join("");
+  const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;thumb ph&quot;>€</div>'">` : `<div class="thumb ph">€</div>`;
+  return `<article class="deal ${pf?"pf":""} ${k?"match":isNew?"isnew":""}" data-id="${esc(d.id)}">
+    <a href="${esc(d.link)}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">${img}</a>
+    <div class="d-body">
+      <a class="d-title" href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.title)}</a>
+      <div class="d-meta"><span class="store">${esc(d.merchant||d.source)}</span><span>${ago(d.published)}</span></div>
+      ${chips?`<div class="chips">${chips}</div>`:""}
+    </div>
+    <div class="deal-foot">
+      <div class="d-price">
+        <span class="now ${d.price===0?"free":""}">${d.price==null?"See deal":eur(d.price)}</span>
+        ${d.wasPrice?`<span class="was">${eur(d.wasPrice)}</span>`:""}
+        ${d.save?`<span class="save">Save ${eur(d.save)} (${d.pctOff}%)</span>`:""}
+        <button class="info" type="button" data-pop="${esc(d.id)}" aria-label="Savings and how to get it: ${esc(d.title)}">Savings &amp; how ⓘ</button>
+      </div>
+    </div>
+  </article>`;
+}
+function renderNav(){
+  const base = baseFilter();
+  $("nav").innerHTML = TABS.map(([id,label])=>{
+    const n = base.filter(d=>inTab(d,id)).length;
+    return `<button type="button" class="${id==="preisfehler"?"pf":""}" data-t="${id}" aria-current="${tab===id}">${label}<span class="n">${n}</span></button>`;
   }).join("");
 }
 function renderStores(){
-  const cur = $("store").value;
-  const counts = {}; data.deals.forEach(d=>{ if(d.merchant) counts[d.merchant]=(counts[d.merchant]||0)+1; });
-  const list = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,40);
-  $("store").innerHTML = `<option value="">All stores</option>` + list.map(([m,n])=>`<option value="${esc(m)}" ${m===cur?"selected":""}>${esc(m)} (${n})</option>`).join("");
+  const cur=$("store").value, c={};
+  data.deals.forEach(d=>{if(d.merchant)c[d.merchant]=(c[d.merchant]||0)+1});
+  $("store").innerHTML=`<option value="">All stores</option>`+Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,50).map(([m,n])=>`<option value="${esc(m)}" ${m===cur?"selected":""}>${esc(m)} (${n})</option>`).join("");
 }
-function filtered(){
-  const q=$("q").value.trim().toLowerCase(), max=parseFloat($("max").value), st=$("store").value, sort=$("sort").value;
-  let l = data.deals.filter(d=> inTab(d,tab)
-    && (!q || (d.title+" "+d.merchant+" "+d.category).toLowerCase().includes(q))
-    && (isNaN(max) || (d.price!=null && d.price<=max))
-    && (!st || d.merchant===st));
-  if(sort==="cheap") l.sort((a,b)=>(a.price??1e9)-(b.price??1e9));
-  else if(sort==="exp") l.sort((a,b)=>(b.price??-1)-(a.price??-1));
-  else l.sort((a,b)=>new Date(b.published)-new Date(a.published));
-  return l;
-}
-function renderList(){
-  const l = filtered();
-  const stale = data.updatedAt && (Date.now()-new Date(data.updatedAt)) > 30*60e3;
-  let html = stale ? `<div class="notice">The deal data hasn't refreshed in ${ago(data.updatedAt).replace(" ago","")}. The update job may be paused or blocked. The deals below may be out of date.</div>` : "";
-  if(!l.length){ html += `<div class="empty">${tab==="watch"?"Add keywords above (for example ps5, oled) to fill your watchlist.":"No deals match these filters right now."}</div>`; $("list").innerHTML=html; return; }
-  html += l.slice(0,shown).map(d=>{
-    const isNew = new Date(d.firstSeen).getTime() > lastVisit && lastVisit>0;
-    const f = d.flags, pf=f.includes("preisfehler"), m = matches(d);
-    const badges = [
-      pf && `<span class="b pf">Preisfehler</span>`,
-      f.includes("gratis") && `<span class="b free">Free</span>`,
-      f.includes("hot") && `<span class="b hot">Hot</span>`,
-      f.includes("blackweek") && `<span class="b bw">Black Week</span>`,
-      d.priceDrop && `<span class="b drop">↓ was ${eur(d.priceDrop.from)}</span>`,
-      isNew && `<span class="b new">New</span>`
-    ].filter(Boolean).join("");
-    const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;thumb ph&quot;>€</div>'">` : `<div class="thumb ph">€</div>`;
-    return `<a class="deal ${pf?"pf":""} ${m?"match":isNew?"isnew":""}" href="${esc(d.link)}" target="_blank" rel="noopener">
-      ${img}
-      <div class="body">
-        <h2 class="title">${esc(d.title)}</h2>
-        <div class="meta">${badges}<span>${esc(d.merchant||d.source)}</span><span>${ago(d.published)}</span>${d.merchant?`<span>via ${esc(d.source)}</span>`:""}</div>
-      </div>
-      <div class="price ${d.price===0?"free":""}">${eur(d.price)}<small>${d.price==null?"see deal":""}</small></div>
-    </a>`;
-  }).join("");
-  if(l.length>shown) html += `<button class="btn more" id="more" type="button">Show more (${l.length-shown} left)</button>`;
-  $("list").innerHTML = html;
+function renderDeals(){
+  const base = baseFilter(), sortBy=$("sort").value;
+  const el = $("deals");
+  if(view.layout==="lanes"){
+    el.className="lanes";
+    el.innerHTML = LANES.map(([id,label])=>{
+      let l = base.filter(d=>inTab(d,id));
+      l = sortList(l, id==="new" ? "new" : id==="hot" ? "hot" : sortBy);
+      const lim = laneShown[id]||30;
+      return `<section class="lane" aria-label="${label}"><div class="lane-h"><h2>${label}</h2><span>${l.length} deals</span></div>
+        <div class="lane-b">${l.length? l.slice(0,lim).map(card).join("") + (l.length>lim?`<button class="tbtn more" data-lane="${id}" type="button">Show more</button>`:"") : `<div class="empty">Nothing here right now.</div>`}</div></section>`;
+    }).join("");
+  } else {
+    el.className = view.layout==="grid" ? "grid" : "list";
+    let l = sortList(base.filter(d=>inTab(d,tab)), sortBy);
+    if(!l.length){ el.innerHTML = `<div class="empty">${tab==="watch"?"Add watch keywords in My profile (for example ps5, oled) to fill this list.":"No deals match these filters right now."}</div>`; }
+    else el.innerHTML = l.slice(0,shown).map(card).join("") + (l.length>shown?`<button class="tbtn more" id="more" type="button" style="grid-column:1/-1">Show ${Math.min(60,l.length-shown)} more of ${l.length-shown}</button>`:"");
+  }
+  const hidden = data.deals.filter(hiddenByProfile).length;
+  $("hiddenNote").innerHTML = hidden ? `${hidden} deals are hidden by your profile (budget or hidden categories). <button type="button" id="showHidden">Edit profile</button>` : "";
 }
 function renderMeta(){
   if(!data.updatedAt) return;
-  const stale = (Date.now()-new Date(data.updatedAt)) > 30*60e3;
-  $("dot").classList.toggle("stale", stale);
+  const old = Date.now()-new Date(data.updatedAt) > 30*60e3;
+  $("dot").classList.toggle("stale",old);
   $("updated").textContent = `Updated ${ago(data.updatedAt)} · ${data.deals.length} deals`;
+  $("notice").innerHTML = old ? `<div class="notice">The deal data hasn't refreshed in ${ago(data.updatedAt).replace(" ago","")}. The update job may be paused. Prices below may be out of date.</div>` : "";
   $("feeds").innerHTML = Object.entries(data.feeds||{}).map(([k,v])=>`<span class="${v.ok?"ok":"bad"}">${v.ok?"●":"○"} ${esc(k)} ${v.count}</span>`).join("");
 }
-function renderAll(){ renderTabs(); renderStores(); renderList(); renderMeta(); }
+function renderAll(){ renderNav(); renderStores(); renderDeals(); renderMeta(); }
 
+/* ---------- savings popover ---------- */
+const pop = $("pop"); let popFor=null, hoverT=null, hideT=null;
+function popHTML(d){
+  const ship = d.shipping||0, cb = d.cashback ? Math.round(d.price*d.cashback)/100 : 0;
+  let calc;
+  if(d.wasPrice!=null && d.price!=null){
+    const eff = Math.round((d.price + ship - cb)*100)/100, effSave = Math.round((d.wasPrice-eff)*100)/100;
+    calc = `<div class="p-hero">
+        <div class="p-price"><span class="now">${eur(d.price,true)}</span><span class="was">${eur(d.wasPrice,true)}</span></div>
+        <div class="p-save">You save ${eur(d.save,true)} · ${d.pctOff}%</div></div>
+      <div><h4>How the saving is calculated</h4></div>
+      <div class="p-calc">
+        <div class="p-row"><span>Usual price</span><span>${eur(d.wasPrice,true)}</span></div>
+        <div class="p-row"><span>Deal price</span><span>− ${eur(d.price,true)}</span></div>
+        ${ship?`<div class="p-row"><span>Shipping</span><span>+ ${eur(ship,true)}</span></div>`:""}
+        ${cb?`<div class="p-row"><span>${d.cashback}% cashback</span><span>− ${eur(cb,true)}</span></div>`:""}
+        <div class="p-row total"><span>${ship||cb?"Real saving":"Saving"}</span><span>${eur(ship||cb?effSave:d.save,true)} (${Math.round(((ship||cb?effSave:d.save)/d.wasPrice)*100)}%)</span></div>
+        <div class="p-basis">The usual price is the ${esc(d.basis)}, as given in the deal post.</div>
+      </div>`;
+  } else {
+    calc = `<div class="p-hero"><div class="p-price"><span class="now">${d.price==null?"Price in the post":eur(d.price,true)}</span></div>
+      <div class="p-basis">This post doesn't name a usual or comparison price, so the exact saving is unknown. Use the price comparison link below to check it.</div></div>`;
+  }
+  const steps = [`Open the deal at <b>${esc(d.merchant||d.source)}</b> using the button below.`];
+  if(d.code) steps.push(`Enter the code <span class="code">${esc(d.code)} <button type="button" data-copy="${esc(d.code)}">Copy</button></span> at checkout.`);
+  (d.conditions||[]).forEach(c=>steps.push(esc(c)+"."));
+  if(d.cashback) steps.push(`Activate ${d.cashback}% cashback (e.g. via Shoop) before you buy.`);
+  if(has(d,"preisfehler")) steps.push("This is a price error. Order quickly, pay by PayPal or credit card, and expect the store may cancel.");
+  steps.push(d.price!=null ? `Check the cart total shows <b>${eur(d.price,true)}</b>${ship?` plus ${eur(ship,true)} shipping`:""}.` : "Check the cart total matches the deal post.");
+  const idealo = "https://www.idealo.de/preisvergleich/MainSearchProductCategory.html?q="+encodeURIComponent(d.title.replace(/\[[^\]]*\]|\([^)]*\)|für .*$|ab .*€.*$/gi,"").slice(0,80));
+  return `<button class="p-close" type="button" aria-label="Close">×</button>
+    ${calc}
+    <div><h4>How to get it</h4></div>
+    <ol class="p-steps">${steps.map(s=>`<li>${s}</li>`).join("")}</ol>
+    ${d.summary?`<div><h4>From the deal post</h4></div><div class="p-sum">${esc(d.summary)}</div>`:""}
+    <div class="p-basis">${d.temperature!=null?`${d.temperature}° community heat · `:""}Posted ${ago(d.published)} on ${esc(d.source)}</div>
+    <div class="p-links"><a href="${esc(d.link)}" target="_blank" rel="noopener">Open deal</a><a class="sec" href="${idealo}" target="_blank" rel="noopener">Compare on idealo</a></div>`;
+}
+function showPop(id, anchor){
+  const d = data.deals.find(x=>x.id===id); if(!d) return;
+  clearTimeout(hideT);
+  document.querySelectorAll(".deal.active").forEach(e=>e.classList.remove("active"));
+  anchor.classList.add("active");
+  popFor=id; pop.innerHTML=popHTML(d); pop.hidden=false;
+  const r=anchor.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight, gap=12, W=innerWidth, H=innerHeight;
+  let x, y;
+  if (W < 700) { x=(W-pw)/2; y=H-ph-12; }
+  else {
+    const price = anchor.querySelector(".d-price").getBoundingClientRect();
+    if (r.right+gap+pw <= W-8) x = r.right+gap;
+    else if (r.left-gap-pw >= 8) x = r.left-gap-pw;
+    else x = Math.max(8, Math.min(W-pw-8, price.left-gap-pw)); // wide list row: sit just left of the price column
+    y = Math.min(Math.max(8, r.top), H-ph-8);
+  }
+  pop.style.left=Math.round(x)+"px"; pop.style.top=Math.round(Math.max(8,y))+"px";
+}
+function hidePop(){ pop.hidden=true; popFor=null; document.querySelectorAll(".deal.active").forEach(e=>e.classList.remove("active")); }
+const canHover = matchMedia("(hover:hover)").matches;
+document.addEventListener("mouseover", e=>{
+  if(!canHover) return;
+  const c = e.target.closest(".deal");
+  if(c){ clearTimeout(hideT); if(popFor!==c.dataset.id){ clearTimeout(hoverT); hoverT=setTimeout(()=>showPop(c.dataset.id,c),220);} return; }
+  if(e.target.closest("#pop")){ clearTimeout(hideT); return; }
+  clearTimeout(hoverT);
+  if(!pop.hidden){ clearTimeout(hideT); hideT=setTimeout(hidePop,250); }
+});
+document.addEventListener("click", e=>{
+  const b=e.target.closest("[data-pop]");
+  if(b){ const c=b.closest(".deal"); (popFor===c.dataset.id && !pop.hidden) ? hidePop() : showPop(c.dataset.id,c); return; }
+  const cp=e.target.closest("[data-copy]");
+  if(cp){ const t=cp.dataset.copy; navigator.clipboard?.writeText(t).then(()=>cp.textContent="Copied",()=>cp.textContent=t); return; }
+  if(e.target.closest(".p-close")){ hidePop(); return; }
+  if(!e.target.closest("#pop") && !pop.hidden) hidePop();
+  if(!e.target.closest("#panel") && !e.target.closest("#displayBtn") && !$("panel").hidden){ $("panel").hidden=true; $("displayBtn").setAttribute("aria-expanded","false"); }
+});
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ hidePop(); $("panel").hidden=true; }});
+addEventListener("scroll",()=>{ if(!pop.hidden && canHover) hidePop(); },{passive:true,capture:true});
+
+/* ---------- display settings ---------- */
+function applyView(){
+  const r=document.documentElement;
+  r.dataset.width = view.width==="normal" ? "" : view.width; if(view.width==="normal") delete r.dataset.width;
+  if(view.size==="m") delete r.dataset.size; else r.dataset.size=view.size;
+  if(view.theme==="auto") delete r.dataset.theme; else r.dataset.theme=view.theme;
+  document.querySelectorAll(".seg").forEach(s=>s.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", String(view[s.dataset.set]===b.dataset.v))));
+  S.set("view",view);
+}
+$("panel").addEventListener("click",e=>{ const b=e.target.closest(".seg button"); if(!b) return; view[b.closest(".seg").dataset.set]=b.dataset.v; applyView(); renderDeals(); });
+$("displayBtn").addEventListener("click",()=>{ const p=$("panel"); p.hidden=!p.hidden; $("displayBtn").setAttribute("aria-expanded",String(!p.hidden)); });
+$("filtersBtn").addEventListener("click",()=>{ const a=$("aside"); a.classList.toggle("open"); $("filtersBtn").setAttribute("aria-expanded",String(a.classList.contains("open"))); });
+
+/* ---------- profile ---------- */
+function paintProfile(){
+  document.querySelectorAll("[data-int]").forEach(c=>c.checked=profile.interests.includes(c.dataset.int));
+  document.querySelectorAll("[data-hide]").forEach(c=>c.checked=profile.hide.includes(c.dataset.hide));
+  $("budget").value=profile.budget; $("kw").value=profile.kw;
+}
+$("profileBox").addEventListener("input",()=>{
+  profile.interests=[...document.querySelectorAll("[data-int]:checked")].map(c=>c.dataset.int);
+  profile.hide=[...document.querySelectorAll("[data-hide]:checked")].map(c=>c.dataset.hide);
+  profile.budget=$("budget").value; profile.kw=$("kw").value;
+  S.set("profile",profile); renderNav(); renderDeals();
+});
+
+/* ---------- other controls ---------- */
+$("nav").addEventListener("click",e=>{const b=e.target.closest("[data-t]"); if(!b) return; tab=b.dataset.t; S.set("tab",tab); shown=60; if(view.layout==="lanes"){view.layout="list";applyView();} renderNav(); renderDeals(); scrollTo({top:0});});
+["q","max","store","minpct","onlySave","sort"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;renderNav();renderDeals();}));
+$("deals").addEventListener("click",e=>{
+  if(e.target.id==="more"){shown+=60;renderDeals();}
+  const l=e.target.closest("[data-lane]"); if(l){laneShown[l.dataset.lane]=(laneShown[l.dataset.lane]||30)+30;renderDeals();}
+});
+$("hiddenNote").addEventListener("click",e=>{ if(e.target.id==="showHidden"){ $("aside").classList.add("open"); $("profileBox").scrollIntoView({behavior:"smooth",block:"center"}); }});
+function paintNotify(){ $("notify").textContent=notifyOn?"🔔 Alerts on":"🔔 Alerts off"; $("notify").classList.toggle("on",notifyOn); $("notify").title="Notify me about new Preisfehler and keyword matches while this tab is open"; }
+$("notify").addEventListener("click",async()=>{
+  if(!("Notification" in window)){ $("notify").textContent="Alerts not supported"; return; }
+  if(notifyOn) notifyOn=false; else { const p=Notification.permission==="granted"?"granted":await Notification.requestPermission(); notifyOn=p==="granted"; }
+  S.set("notify",notifyOn); paintNotify();
+});
+
+/* ---------- data loop ---------- */
 function alertNew(fresh){
-  if(!notifyOn || !fresh.length) return;
-  const hits = fresh.filter(d=>d.flags.includes("preisfehler") || matches(d)).slice(0,3);
-  hits.forEach(d=>{ try{ const n=new Notification((d.flags.includes("preisfehler")?"Preisfehler: ":"Watchlist: ")+eur(d.price),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(d.link,"_blank"); }catch{} });
+  if(!notifyOn||!fresh.length) return;
+  fresh.filter(d=>!hiddenByProfile(d) && (has(d,"preisfehler")||kwHit(d))).slice(0,3).forEach(d=>{
+    try{ const n=new Notification((has(d,"preisfehler")?"Preisfehler: ":"Keyword match: ")+(d.price!=null?eur(d.price):""),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(d.link,"_blank"); }catch{}
+  });
 }
 async function load(){
   try{
-    const r = await fetch("deals.json?t="+Date.now(), {cache:"no-store"});
-    if(!r.ok) throw new Error(r.status);
-    const next = await r.json();
-    const fresh = seenIds.size ? next.deals.filter(d=>!seenIds.has(d.id)) : [];
-    data = next;
-    alertNew(fresh);
-    next.deals.forEach(d=>seenIds.add(d.id));
-    seenIds = new Set([...seenIds].slice(-2000));
-    store.set("seen",[...seenIds]);
-    renderAll();
-  }catch(e){
-    $("updated").textContent = "Couldn't load deals. Retrying in 60 s";
-    $("dot").classList.add("stale");
-  }
+    const r=await fetch("deals.json?t="+Date.now(),{cache:"no-store"}); if(!r.ok) throw 0;
+    const next=await r.json();
+    const fresh = seen.size ? next.deals.filter(d=>!seen.has(d.id)) : [];
+    data=next; alertNew(fresh);
+    next.deals.forEach(d=>seen.add(d.id)); seen=new Set([...seen].slice(-3000)); S.set("seen",[...seen]);
+    const keepPop = popFor; renderAll();
+    if(keepPop && !pop.hidden){ const c=document.querySelector(`.deal[data-id="${CSS.escape(keepPop)}"]`); c ? showPop(keepPop,c) : hidePop(); }
+  }catch{ $("updated").textContent="Couldn't load deals. Retrying in 60 s"; $("dot").classList.add("stale"); }
 }
-
-$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-t]");if(!b)return;tab=b.dataset.t;store.set("tab",tab);shown=60;renderTabs();renderList();});
-["q","max","store","sort"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;renderList();}));
-$("kw").addEventListener("input",()=>{store.set("kw",$("kw").value);renderTabs();renderList();});
-$("list").addEventListener("click",e=>{if(e.target.id==="more"){shown+=60;renderList();}});
-function paintNotify(){ $("notify").textContent = notifyOn ? "🔔 Alerts on" : "🔔 Alerts off"; $("notify").classList.toggle("on",notifyOn); $("notify").title="Get a browser notification for new Preisfehler and watchlist matches while this tab is open"; }
-$("notify").addEventListener("click",async()=>{
-  if(!("Notification" in window)){ $("notify").textContent="Alerts not supported"; return; }
-  if(notifyOn){ notifyOn=false; }
-  else { const p = Notification.permission==="granted" ? "granted" : await Notification.requestPermission(); notifyOn = p==="granted"; }
-  store.set("notify",notifyOn); paintNotify();
-});
-addEventListener("beforeunload",()=>store.set("lastVisit",Date.now()));
-paintNotify();
-load();
-setInterval(load, 60e3);
-setInterval(renderMeta, 30e3);
+addEventListener("beforeunload",()=>S.set("lastVisit",Date.now()));
+applyView(); paintProfile(); paintNotify();
+load(); setInterval(load,60e3); setInterval(renderMeta,30e3);
 </script>
 </body>
 </html>
