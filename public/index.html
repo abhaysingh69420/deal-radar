@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deal Radar Germany</title>
+<meta name="description" content="Live Black Week deals and Preisfehler (price errors) in Germany, updated every few minutes.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23e63312'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>€</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: sticky control strip, dense deal list (thumbnail · title · price column), feed health footer */
+:root{
+  --bg:#f3f4f2; --surface:#fff; --ink:#15171a; --muted:#61666e; --line:#e1e3df;
+  --red:#e63312; --red-soft:#fde6e0; --green:#16804a; --green-soft:#dff3e7; --amber:#9a5d00; --amber-soft:#fcefd6; --blue:#1d5fd0; --blue-soft:#e3ecfb;
+  --display:"Archivo",ui-sans-serif,system-ui,sans-serif; --body:"Inter",ui-sans-serif,system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1012; --surface:#17191c; --ink:#eceee9; --muted:#9a9fa6; --line:#272a2e;
+  --red:#ff5a3c; --red-soft:#3a1810; --green:#45cf82; --green-soft:#11291b; --amber:#f2b14e; --amber-soft:#2f220c; --blue:#7aa7ff; --blue-soft:#14213a; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);padding-top:env(safe-area-inset-top,0px)}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{padding-block:22px 14px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+h1{font:900 clamp(28px,5vw,44px)/.95 var(--display);font-stretch:118%;margin:0;letter-spacing:-.01em;text-transform:uppercase}
+h1 span{color:var(--red)}
+.live{display:flex;gap:8px;align-items:center;font:500 13px var(--mono);color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green)}
+.dot.stale{background:var(--amber)}
+@media (prefers-reduced-motion:no-preference){.dot{animation:pulse 2s infinite}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px;display:grid;gap:10px}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.tab{flex:none;font:600 13px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.tab .n{font:700 11px var(--mono);color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab[aria-selected="true"] .n{color:inherit;opacity:.7}
+.tab.pf{border-color:var(--red);color:var(--red)}
+.tab.pf[aria-selected="true"]{background:var(--red);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{font:14px var(--body);color:var(--ink)}
+input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+#q{flex:1 1 200px}
+#max{width:110px}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600}
+.btn.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.watchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+#kw{flex:1 1 240px}
+main{padding-block:14px 40px;display:grid;gap:8px}
+.deal{display:grid;grid-template-columns:72px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px 10px 10px;color:inherit;text-decoration:none}
+.deal:hover{border-color:var(--muted)}
+.deal.isnew{box-shadow:inset 3px 0 0 var(--blue)}
+.deal.match{box-shadow:inset 3px 0 0 var(--green)}
+.deal.pf{border-color:color-mix(in srgb,var(--red) 45%,var(--line))}
+.thumb{width:72px;height:72px;border-radius:8px;background:var(--bg);object-fit:contain;display:block}
+.thumb.ph{display:grid;place-items:center;font:900 22px var(--display);color:var(--muted)}
+.body{min-width:0;display:grid;gap:4px}
+.title{font:600 15px/1.3 var(--body);margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meta{display:flex;flex-wrap:wrap;gap:4px 10px;font:500 12px var(--mono);color:var(--muted);align-items:center}
+.b{font:700 10.5px var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:4px}
+.b.pf{background:var(--red);color:#fff}
+.b.free{background:var(--green-soft);color:var(--green)}
+.b.hot{background:var(--amber-soft);color:var(--amber)}
+.b.bw{background:var(--ink);color:var(--bg)}
+.b.new{background:var(--blue-soft);color:var(--blue)}
+.b.drop{background:var(--green);color:#fff}
+.price{text-align:right;font:700 20px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.price.free{color:var(--green)}
+.price small{display:block;font:500 11px var(--mono);color:var(--muted)}
+.empty,.notice{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+.notice{text-align:left;font-size:13px;padding:12px 14px;border-style:solid;background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.more{justify-self:center}
+footer{border-top:1px solid var(--line);padding-block:18px 32px;font-size:12.5px;color:var(--muted);display:grid;gap:8px}
+.feeds{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 12px var(--mono)}
+.ok{color:var(--green)} .bad{color:var(--red)}
+footer a{color:inherit}
+@media (max-width:560px){
+  .deal{grid-template-columns:56px 1fr;grid-template-areas:"t b" "t p";gap:4px 12px}
+  .thumb{width:56px;height:56px;grid-area:t}
+  .body{grid-area:b}
+  .price{grid-area:p;text-align:left;font-size:17px}
+  .price small{display:inline;margin-left:6px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Deal Radar <span>DE</span></h1>
+    <div class="live" aria-live="polite"><span class="dot" id="dot"></span><span id="updated">Loading…</span></div>
+  </header>
+
+  <div class="controls">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="row">
+      <input id="q" type="search" placeholder="Search: PS5, OLED, Airfryer, Lego…" aria-label="Search deals">
+      <input id="max" type="number" min="0" step="1" placeholder="Max €" aria-label="Maximum price in euros">
+      <select id="store" aria-label="Store"><option value="">All stores</option></select>
+      <select id="sort" aria-label="Sort">
+        <option value="new">Newest</option>
+        <option value="cheap">Cheapest</option>
+        <option value="exp">Most expensive</option>
+      </select>
+      <button class="btn" id="notify" type="button">🔔 Alerts off</button>
+    </div>
+    <div class="watchbar">
+      <label for="kw">Watch keywords</label>
+      <input id="kw" type="text" placeholder="e.g. ps5, airpods, oled, dyson (comma-separated)">
+    </div>
+  </div>
+
+  <main id="list"></main>
+
+  <footer>
+    <div>Deals come from the public RSS feeds of mydealz, MyTopDeals, DealDoktor and mein-deal. A server job pulls them every few minutes, and this page checks for new data every 60 seconds. "Preisfehler" means a price error reported by the community. The store may cancel those orders, so pay by credit card or PayPal and don't count on delivery.</div>
+    <div class="feeds" id="feeds"></div>
+  </footer>
+</div>
+
+<script>
+const TABS = [
+  ["all","All"],["preisfehler","Preisfehler"],["gratis","Free"],["hot","Hot"],["blackweek","Black Week"],
+  ["elektronik","Electronics"],["gaming","Gaming"],["watch","My watchlist"]
+];
+const store = {
+  get(k,d){try{const v=localStorage.getItem("dr-"+k);return v==null?d:JSON.parse(v)}catch{return d}},
+  set(k,v){try{localStorage.setItem("dr-"+k,JSON.stringify(v))}catch{}}
+};
+let data = {deals:[],feeds:{}}, tab = store.get("tab","all"), shown = 60;
+const lastVisit = store.get("lastVisit", 0);
+let seenIds = new Set(store.get("seen", []));
+let notifyOn = store.get("notify", false) && "Notification" in window && Notification.permission === "granted";
+const $ = id => document.getElementById(id);
+$("kw").value = store.get("kw","");
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = n => n==null ? "" : n===0 ? "FREE" : n.toLocaleString("de-DE",{style:"currency",currency:"EUR",minimumFractionDigits:n%1?2:0});
+const kws = () => $("kw").value.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean);
+const matches = d => { const k=kws(); if(!k.length) return false; const t=(d.title+" "+d.merchant).toLowerCase(); return k.some(w=>t.includes(w)); };
+function ago(iso){ const s=(Date.now()-new Date(iso))/1000; if(s<60)return "just now"; if(s<3600)return Math.floor(s/60)+" min ago"; if(s<86400)return Math.floor(s/3600)+" h ago"; return Math.floor(s/86400)+" d ago"; }
+const inTab = (d,t) => t==="all" ? true : t==="watch" ? matches(d) : d.flags.includes(t);
+
+function renderTabs(){
+  $("tabs").innerHTML = TABS.map(([id,label])=>{
+    const n = data.deals.filter(d=>inTab(d,id)).length;
+    return `<button class="tab ${id==="preisfehler"?"pf":""}" role="tab" aria-selected="${tab===id}" data-t="${id}">${label} <span class="n">${n}</span></button>`;
+  }).join("");
+}
+function renderStores(){
+  const cur = $("store").value;
+  const counts = {}; data.deals.forEach(d=>{ if(d.merchant) counts[d.merchant]=(counts[d.merchant]||0)+1; });
+  const list = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,40);
+  $("store").innerHTML = `<option value="">All stores</option>` + list.map(([m,n])=>`<option value="${esc(m)}" ${m===cur?"selected":""}>${esc(m)} (${n})</option>`).join("");
+}
+function filtered(){
+  const q=$("q").value.trim().toLowerCase(), max=parseFloat($("max").value), st=$("store").value, sort=$("sort").value;
+  let l = data.deals.filter(d=> inTab(d,tab)
+    && (!q || (d.title+" "+d.merchant+" "+d.category).toLowerCase().includes(q))
+    && (isNaN(max) || (d.price!=null && d.price<=max))
+    && (!st || d.merchant===st));
+  if(sort==="cheap") l.sort((a,b)=>(a.price??1e9)-(b.price??1e9));
+  else if(sort==="exp") l.sort((a,b)=>(b.price??-1)-(a.price??-1));
+  else l.sort((a,b)=>new Date(b.published)-new Date(a.published));
+  return l;
+}
+function renderList(){
+  const l = filtered();
+  const stale = data.updatedAt && (Date.now()-new Date(data.updatedAt)) > 30*60e3;
+  let html = stale ? `<div class="notice">The deal data hasn't refreshed in ${ago(data.updatedAt).replace(" ago","")}. The update job may be paused or blocked. The deals below may be out of date.</div>` : "";
+  if(!l.length){ html += `<div class="empty">${tab==="watch"?"Add keywords above (for example ps5, oled) to fill your watchlist.":"No deals match these filters right now."}</div>`; $("list").innerHTML=html; return; }
+  html += l.slice(0,shown).map(d=>{
+    const isNew = new Date(d.firstSeen).getTime() > lastVisit && lastVisit>0;
+    const f = d.flags, pf=f.includes("preisfehler"), m = matches(d);
+    const badges = [
+      pf && `<span class="b pf">Preisfehler</span>`,
+      f.includes("gratis") && `<span class="b free">Free</span>`,
+      f.includes("hot") && `<span class="b hot">Hot</span>`,
+      f.includes("blackweek") && `<span class="b bw">Black Week</span>`,
+      d.priceDrop && `<span class="b drop">↓ was ${eur(d.priceDrop.from)}</span>`,
+      isNew && `<span class="b new">New</span>`
+    ].filter(Boolean).join("");
+    const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;thumb ph&quot;>€</div>'">` : `<div class="thumb ph">€</div>`;
+    return `<a class="deal ${pf?"pf":""} ${m?"match":isNew?"isnew":""}" href="${esc(d.link)}" target="_blank" rel="noopener">
+      ${img}
+      <div class="body">
+        <h2 class="title">${esc(d.title)}</h2>
+        <div class="meta">${badges}<span>${esc(d.merchant||d.source)}</span><span>${ago(d.published)}</span>${d.merchant?`<span>via ${esc(d.source)}</span>`:""}</div>
+      </div>
+      <div class="price ${d.price===0?"free":""}">${eur(d.price)}<small>${d.price==null?"see deal":""}</small></div>
+    </a>`;
+  }).join("");
+  if(l.length>shown) html += `<button class="btn more" id="more" type="button">Show more (${l.length-shown} left)</button>`;
+  $("list").innerHTML = html;
+}
+function renderMeta(){
+  if(!data.updatedAt) return;
+  const stale = (Date.now()-new Date(data.updatedAt)) > 30*60e3;
+  $("dot").classList.toggle("stale", stale);
+  $("updated").textContent = `Updated ${ago(data.updatedAt)} · ${data.deals.length} deals`;
+  $("feeds").innerHTML = Object.entries(data.feeds||{}).map(([k,v])=>`<span class="${v.ok?"ok":"bad"}">${v.ok?"●":"○"} ${esc(k)} ${v.count}</span>`).join("");
+}
+function renderAll(){ renderTabs(); renderStores(); renderList(); renderMeta(); }
+
+function alertNew(fresh){
+  if(!notifyOn || !fresh.length) return;
+  const hits = fresh.filter(d=>d.flags.includes("preisfehler") || matches(d)).slice(0,3);
+  hits.forEach(d=>{ try{ const n=new Notification((d.flags.includes("preisfehler")?"Preisfehler: ":"Watchlist: ")+eur(d.price),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(d.link,"_blank"); }catch{} });
+}
+async function load(){
+  try{
+    const r = await fetch("deals.json?t="+Date.now(), {cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    const next = await r.json();
+    const fresh = seenIds.size ? next.deals.filter(d=>!seenIds.has(d.id)) : [];
+    data = next;
+    alertNew(fresh);
+    next.deals.forEach(d=>seenIds.add(d.id));
+    seenIds = new Set([...seenIds].slice(-2000));
+    store.set("seen",[...seenIds]);
+    renderAll();
+  }catch(e){
+    $("updated").textContent = "Couldn't load deals. Retrying in 60 s";
+    $("dot").classList.add("stale");
+  }
+}
+
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-t]");if(!b)return;tab=b.dataset.t;store.set("tab",tab);shown=60;renderTabs();renderList();});
+["q","max","store","sort"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;renderList();}));
+$("kw").addEventListener("input",()=>{store.set("kw",$("kw").value);renderTabs();renderList();});
+$("list").addEventListener("click",e=>{if(e.target.id==="more"){shown+=60;renderList();}});
+function paintNotify(){ $("notify").textContent = notifyOn ? "🔔 Alerts on" : "🔔 Alerts off"; $("notify").classList.toggle("on",notifyOn); $("notify").title="Get a browser notification for new Preisfehler and watchlist matches while this tab is open"; }
+$("notify").addEventListener("click",async()=>{
+  if(!("Notification" in window)){ $("notify").textContent="Alerts not supported"; return; }
+  if(notifyOn){ notifyOn=false; }
+  else { const p = Notification.permission==="granted" ? "granted" : await Notification.requestPermission(); notifyOn = p==="granted"; }
+  store.set("notify",notifyOn); paintNotify();
+});
+addEventListener("beforeunload",()=>store.set("lastVisit",Date.now()));
+paintNotify();
+load();
+setInterval(load, 60e3);
+setInterval(renderMeta, 30e3);
+</script>
+</body>
+</html>

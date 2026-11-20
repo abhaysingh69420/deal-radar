@@ -1,0 +1,10 @@
+{
+  "name": "deal-radar-de",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch": "node scripts/fetch.mjs",
+    "start": "node scripts/serve.mjs"
+  },
+  "engines": { "node": ">=18" }
+}
