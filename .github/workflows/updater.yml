@@ -1,0 +1,37 @@
+name: Live updater
+
+# One long-running job refreshes deals every 5 minutes for ~5.7 hours, then starts the next run.
+# The schedule is only a safety net that restarts the chain if it ever stops.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,37 * * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: live-updater
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Refresh deals every 5 minutes
+        env:
+          PREVIOUS_URL: https://raw.githubusercontent.com/${{ github.repository }}/data/deals.json
+          DURATION_MIN: "340"
+          INTERVAL_SEC: "300"
+        run: node scripts/loop.mjs
+      - name: Start the next run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run updater.yml --repo "${{ github.repository }}" --ref main

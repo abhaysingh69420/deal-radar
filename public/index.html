@@ -349,7 +349,7 @@ function sortList(l, by){
   return l.sort(f);
 }
 /* ---------- Amazon + search ---------- */
-const SITE = Object.assign({amazonTag:"", amazonHost:"www.amazon.de", popularSearches:[]}, window.SITE||{});
+const SITE = Object.assign({amazonTag:"", amazonHost:"www.amazon.de", popularSearches:[], dataUrl:""}, window.SITE||{});
 function cleanTitle(t){
   return t.replace(/\[[^\]]*\]|\([^)]*\)/g," ").replace(/^(preisfehler|update|amazon)\s*[:!-]\s*/i,"")
     .replace(/\s(für|ab|nur|um|zum|@|bei|jetzt)\s.*$/i,"").replace(/[\p{Extended_Pictographic}|–—]/gu," ").replace(/\s+/g," ").trim().split(" ").slice(0,9).join(" ");
@@ -616,8 +616,12 @@ function alertNew(fresh){
 }
 async function load(){
   try{
-    const r=await fetch("deals.json?t="+Date.now(),{cache:"no-store"}); if(!r.ok) throw 0;
-    const next=await r.json();
+    const getJSON = async u => { const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw 0; return r.json(); };
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    const tries = [local ? null : SITE.dataUrl, "deals.json?t="+Date.now()].filter(Boolean);
+    let next=null;
+    for(const u of tries){ try{ const j=await getJSON(u); if(!next || new Date(j.updatedAt)>new Date(next.updatedAt)) next=j; if(next && Date.now()-new Date(next.updatedAt)<15*60e3) break; }catch{} }
+    if(!next) throw 0;
     const fresh = seen.size ? next.deals.filter(d=>!seen.has(d.id)) : [];
     data=next; alertNew(fresh);
     next.deals.forEach(d=>seen.add(d.id)); seen=new Set([...seen].slice(-3000)); S.set("seen",[...seen]);
