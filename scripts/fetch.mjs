@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "public", "deals.json");
-const KEEP_HOURS = 96;
-const MAX_ITEMS = 1200;
+const KEEP_HOURS = 14 * 24; // searchable index: two weeks of deals
+const MAX_ITEMS = 4000;
 
 const MD = "https://www.mydealz.de/rss/";
 const FEEDS = [
@@ -100,6 +100,14 @@ const PF_RE = /preisfehler|price error|glitch|fehlerpreis/i;
 const FREE_RE = /\bgratis\b|kostenlos|\bfreebie|für 0[,.]?0?0?\s*€|\b0,00\s*€/i;
 const BF_RE = /black\s*(friday|week)|cyber\s*(monday|week)/i;
 
+// Amazon product id (ASIN) from the deal link or the post body, so the site can build a tagged link.
+const ASIN_RE = /amazon\.de\/(?:[^\s"'<>]*?\/)?(?:dp|gp\/product|gp\/aw\/d|exec\/obidos\/ASIN)\/([A-Z0-9]{10})/i;
+function amazonInfo(link, html, merchant) {
+  const m = (link || "").match(ASIN_RE) || (html || "").match(ASIN_RE);
+  const isAmazon = /amazon/i.test(merchant || "") || /amazon\.de|amzn\./i.test(link || "") || !!m;
+  return { asin: m ? m[1].toUpperCase() : null, isAmazon };
+}
+
 function extractCode(text) {
   const m = text.match(/(?:Gutscheincode|Rabattcode|Promocode|Promo-Code|Aktionscode|Code)\s*[:=]?\s*[„"»'‚]?([A-Z0-9][A-Z0-9_-]{3,19})\b/);
   if (!m) return null;
@@ -168,7 +176,8 @@ function parseItems(xml, feed) {
       shipping: shipping ? toNum(shipping) : null,
       conditions: CONDITIONS.filter(([re]) => re.test(full)).map(([, l]) => l).slice(0, 4),
       temperature,
-      summary: text.slice(0, 420),
+      summary: text.slice(0, 300),
+      ...amazonInfo(link, decode(rawDesc), merchant),
       category: cats[0] || "",
       source: feed.source,
       flags: [...flags],
@@ -196,6 +205,36 @@ async function loadPrevious() {
   try { return JSON.parse(await readFile(OUT, "utf8")); } catch { return { deals: [] }; }
 }
 
+// Hand-researched picks (data/picks.json), kept until their expiry date or 10 days after they were found.
+const CAT_FLAG = { tech: "tech", apple: "tech", gaming: "gaming", home: "home", fashion: "home", food: "home" };
+async function loadPicks() {
+  let picks = [];
+  try { picks = JSON.parse(await readFile(join(ROOT, "data", "picks.json"), "utf8")); } catch { return []; }
+  const today = Date.now();
+  return picks.filter((p) => {
+    const until = p.expires ? new Date(p.expires + "T23:59:59+01:00").getTime() : new Date(p.seenDate).getTime() + 10 * 864e5;
+    return until > today && p.price != null && p.url;
+  }).map((p) => {
+    const flags = new Set(["picked"]);
+    if (CAT_FLAG[p.category]) flags.add(CAT_FLAG[p.category]);
+    if (p.isPriceError) flags.add("preisfehler");
+    if (p.price === 0) flags.add("gratis");
+    flags.add("blackweek");
+    const save = p.wasPrice ? Math.round((p.wasPrice - p.price) * 100) / 100 : null;
+    return {
+      id: "pick:" + p.url, title: p.title, link: p.url, merchant: p.store, price: p.price, image: p.image || "",
+      wasPrice: p.wasPrice ?? null, pctOff: p.wasPrice ? Math.round((1 - p.price / p.wasPrice) * 100) : null,
+      basis: p.wasBasis ? { UVP: "manufacturer list price (UVP)", "comparison price": "comparison price (Preisvergleich / idealo)", "previous price": "regular price at the store", "lowest-price-30-days": "lowest price of the last 30 days" }[p.wasBasis] || p.wasBasis : null,
+      save, code: p.code || null, cashback: null, shipping: null,
+      conditions: p.conditions ? [p.conditions] : [], temperature: null,
+      summary: [p.note, `Checked ${p.seenDate} (${p.confidence} confidence).`, p.sourceUrl && p.sourceUrl !== p.url ? `Source: ${p.sourceUrl}` : ""].filter(Boolean).join(" "),
+      asin: p.asin || null, isAmazon: !!p.asin || /amazon/i.test(p.store || ""),
+      category: p.category, source: "Researched pick", sourceUrl: p.sourceUrl, confidence: p.confidence,
+      flags: [...flags], published: new Date(p.seenDate + "T12:00:00+01:00").toISOString(), firstSeen: p.addedAt || new Date(p.seenDate).toISOString(),
+    };
+  });
+}
+
 // small concurrency pool so we don't hammer one site
 async function pool(list, n, fn) {
   const out = []; let i = 0;
@@ -220,7 +259,7 @@ export async function run() {
         d.firstSeen = old.firstSeen || now;
         d.flags = [...new Set([...(old.flags || []), ...d.flags])];
         d.temperature = d.temperature ?? old.temperature ?? null;
-        for (const k of ["wasPrice", "pctOff", "basis", "save", "code"]) if (d[k] == null && old[k] != null) d[k] = old[k];
+        for (const k of ["wasPrice", "pctOff", "basis", "save", "code", "asin"]) if (d[k] == null && old[k] != null) d[k] = old[k];
         if (old.price != null && d.price != null && d.price < old.price) d.priceDrop = { from: old.price, at: now };
         else if (old.priceDrop) d.priceDrop = old.priceDrop;
       } else d.firstSeen = now;
@@ -228,10 +267,11 @@ export async function run() {
     }
   }
 
-  const deals = [...byId.values()]
-    .filter((d) => new Date(d.published).getTime() > cutoff)
+  const feedDeals = [...byId.values()]
+    .filter((d) => !d.flags.includes("picked") && new Date(d.published).getTime() > cutoff)
     .sort((a, b) => new Date(b.published) - new Date(a.published))
     .slice(0, MAX_ITEMS);
+  const deals = [...(await loadPicks()), ...feedDeals];
 
   await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify({ updatedAt: now, feeds: status, deals }));

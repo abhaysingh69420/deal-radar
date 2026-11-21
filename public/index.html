@@ -6,14 +6,13 @@
 <title>Deal Radar Germany</title>
 <meta name="description" content="Live Black Week deals and Preisfehler (price errors) in Germany, ranked for you, updated every few minutes.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23d6331a'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>€</text></svg>">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..900&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: top bar · left sidebar (filters + profile) on wide screens · deal area that switches List / Grid / Lanes. Lanes = side-by-side live columns for ultrawide. */
 :root{
   --bg:#f6f6f4; --surface:#ffffff; --raised:#ffffff; --ink:#111316; --ink-2:#3b4048; --muted:#5f6670; --line:#dcdedb; --line-2:#ebecea;
   --red:#c92a12; --red-soft:#fdebe6; --green:#11733f; --green-soft:#e1f3e8; --amber:#8a5300; --amber-soft:#fcf0d8; --blue:#1a56c4; --blue-soft:#e6eefc;
   --shadow:0 12px 32px rgba(17,19,22,.16),0 2px 6px rgba(17,19,22,.08);
-  --display:"Archivo",ui-sans-serif,system-ui,sans-serif; --body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; --body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; --amz:#ff9900; --amz-ink:#111;
   --fs:16px; --page:1280px;
   color-scheme:light;
 }
@@ -116,6 +115,7 @@ aside{display:grid;gap:18px;align-content:start}
 .c-new{background:var(--blue-soft);color:var(--blue)}
 .c-why{background:var(--bg);color:var(--ink-2);border:1px solid var(--line);font-weight:600}
 .c-drop{background:var(--green);color:#fff}
+.c-pick{background:var(--blue);color:#fff}
 .d-price{text-align:right;display:grid;gap:2px;justify-items:end;font-variant-numeric:tabular-nums}
 .now{font:800 1.5em/1.1 var(--body);letter-spacing:-.01em;white-space:nowrap}
 .now.free{color:var(--green)}
@@ -164,6 +164,21 @@ aside{display:grid;gap:18px;align-content:start}
 .p-links{display:flex;gap:10px;flex-wrap:wrap}
 .p-links a{font-weight:600;text-decoration:none;padding:8px 14px;border-radius:10px;background:var(--ink);color:var(--bg)}
 .p-links a.sec{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.p-links a.amz,.amz{background:var(--amz);color:var(--amz-ink);border:0}
+.amz{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.8125em;padding:5px 11px;border-radius:8px;text-decoration:none;white-space:nowrap}
+.amz:hover{filter:brightness(.95)}
+.aff{font-size:.75em;color:var(--muted)}
+.c-old{background:var(--bg);color:var(--muted);border:1px dashed var(--line)}
+.shead{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px}
+.shead h1{margin:0;font:800 1.375em/1.25 var(--display);text-wrap:balance}
+.shead p{margin:0;color:var(--muted)}
+.qchips{display:flex;flex-wrap:wrap;gap:8px}
+.qchip{border:1.5px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 13px;cursor:pointer;font-weight:600;font-size:.875em}
+.qchip:hover{border-color:var(--ink-2)}
+.scta{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.scta a{font-weight:700;text-decoration:none;padding:9px 15px;border-radius:10px}
+.scta a.sec{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+footer .legal{display:flex;gap:16px;flex-wrap:wrap}
 .p-close{position:absolute;right:10px;top:10px;border:0;background:var(--bg);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;display:none}
 @media (hover:none){.p-close{display:block}}
 
@@ -228,6 +243,7 @@ footer{border-top:1px solid var(--line);padding-block:20px 36px;color:var(--mute
   </aside>
 
   <main class="area">
+    <div id="searchHead"></div>
     <div id="notice"></div>
     <div id="deals"></div>
     <div class="hidden-note" id="hiddenNote"></div>
@@ -236,6 +252,8 @@ footer{border-top:1px solid var(--line);padding-block:20px 36px;color:var(--mute
 
 <div class="page"><footer>
   <div>Deals come from the public RSS feeds of mydealz, MyTopDeals, DealDoktor and mein-deal, refreshed every few minutes. This page checks for new data every 60 seconds. Savings are calculated from the comparison price, list price (UVP) or regular price named in each deal post. If a post doesn't name one, the exact saving is shown as unknown. Stores often cancel Preisfehler orders, so pay by PayPal or credit card.</div>
+  <div><b>*</b> Links marked “Amazon” are affiliate links. Als Amazon-Partner verdiene ich an qualifizierten Verkäufen. You pay the same price. Prices shown were seen on the deal sites at the time shown; the current price on Amazon may differ.</div>
+  <div class="legal"><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></div>
   <div class="feeds" id="feeds"></div>
 </footer></div>
 
@@ -249,6 +267,7 @@ footer{border-top:1px solid var(--line);padding-block:20px 36px;color:var(--mute
   <p class="hidden-note" style="margin:0">On an ultrawide monitor, pick <b>Lanes</b> with <b>Full</b> width to see For you, Preisfehler, Hot and Newest side by side.</p>
 </div>
 
+<script src="config.js"></script>
 <script>
 /* ---------- state ---------- */
 const S = {
@@ -266,10 +285,10 @@ let notifyOn = S.get("notify",false) && "Notification" in window && Notification
 const $ = id => document.getElementById(id);
 
 const TABS = [
-  ["foryou","For you"],["all","All deals"],["preisfehler","Preisfehler"],["gratis","Free"],["hot","Hot right now"],
+  ["foryou","For you"],["picked","Researched picks"],["all","All deals"],["preisfehler","Preisfehler"],["gratis","Free"],["hot","Hot right now"],
   ["blackweek","Black Week"],["tech","Tech"],["gaming","Gaming"],["home","Home & everyday"],["watch","My keywords"]
 ];
-const LANES = [["foryou","For you"],["pfree","Preisfehler & free"],["hot","Hot right now"],["tech","Tech"],["gaming","Gaming"],["new","Newest"]];
+const LANES = [["foryou","For you"],["picked","Researched picks"],["pfree","Preisfehler & free"],["hot","Hot right now"],["tech","Tech"],["gaming","Gaming"],["new","Newest"]];
 
 /* ---------- helpers ---------- */
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -307,6 +326,7 @@ function score(d){
   if(d.pctOff) s+=Math.min(d.pctOff,90)/10;
   if(d.temperature) s+=Math.min(Math.max(d.temperature,0),1200)/150;
   if(has(d,"hot")) s+=2;
+  if(has(d,"picked")) s+= d.confidence==="high"?4:d.confidence==="medium"?2:0;
   s += Math.max(0, 4 - hoursAgo(d)/6);
   return s;
 }
@@ -328,10 +348,32 @@ function sortList(l, by){
   }[by] || ((a,b)=>score(b)-score(a));
   return l.sort(f);
 }
+/* ---------- Amazon + search ---------- */
+const SITE = Object.assign({amazonTag:"", amazonHost:"www.amazon.de", popularSearches:[]}, window.SITE||{});
+function cleanTitle(t){
+  return t.replace(/\[[^\]]*\]|\([^)]*\)/g," ").replace(/^(preisfehler|update|amazon)\s*[:!-]\s*/i,"")
+    .replace(/\s(für|ab|nur|um|zum|@|bei|jetzt)\s.*$/i,"").replace(/[\p{Extended_Pictographic}|–—]/gu," ").replace(/\s+/g," ").trim().split(" ").slice(0,9).join(" ");
+}
+function amazonSearch(q){ return `https://${SITE.amazonHost}/s?k=${encodeURIComponent(q)}${SITE.amazonTag?`&tag=${encodeURIComponent(SITE.amazonTag)}`:""}`; }
+function amazonUrl(d){
+  if(d.asin) return `https://${SITE.amazonHost}/dp/${d.asin}${SITE.amazonTag?`?tag=${encodeURIComponent(SITE.amazonTag)}`:""}`;
+  try{ const u=new URL(d.link); if(/(^|\.)amazon\.de$/.test(u.hostname)){ if(SITE.amazonTag) u.searchParams.set("tag",SITE.amazonTag); return u.href; } }catch{}
+  return d.isAmazon || /amazon/i.test(d.merchant||"") ? amazonSearch(cleanTitle(d.title)) : null;
+}
+const fold = s => String(s||"").toLowerCase().replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss").replace(/ae/g,"a").replace(/oe/g,"o").replace(/ue/g,"u").replace(/[^a-z0-9]+/g," ");
+function searchScore(d, toks){
+  const t=fold(d.title+" "+d.merchant), body=fold(d.category+" "+(d.summary||""));
+  let rel=0;
+  for(const k of toks){ if(t.includes(k)) rel+=3; else if(body.includes(k)) rel+=1; else return -1; }
+  const age=hoursAgo(d);
+  return rel*2 + score(d)*0.6 - (age>96 ? 4 : 0);
+}
+function qTokens(){ return fold($("q").value).split(" ").filter(w=>w.length>1); }
+
 function baseFilter(){
-  const q=$("q").value.trim().toLowerCase(), max=parseFloat($("max").value), st=$("store").value, minp=+$("minpct").value, only=$("onlySave").checked;
+  const max=parseFloat($("max").value), st=$("store").value, minp=+$("minpct").value, only=$("onlySave").checked;
   return data.deals.filter(d => !hiddenByProfile(d)
-    && (!q || (d.title+" "+d.merchant+" "+d.category+" "+(d.summary||"")).toLowerCase().includes(q))
+    && (has(d,"picked") || hoursAgo(d) <= 96) // older deals stay searchable but leave the browse tabs
     && (isNaN(max) || (d.price!=null && d.price<=max))
     && (!st || d.merchant===st)
     && (!minp || (d.pctOff??0)>=minp)
@@ -344,10 +386,12 @@ function card(d){
   const k = kwHit(d), pf = has(d,"preisfehler");
   const chips = [
     pf && `<span class="chip c-pf">Preisfehler</span>`,
+    has(d,"picked") && `<span class="chip c-pick">Researched${d.confidence&&d.confidence!=="high"?" · "+d.confidence+" confidence":""}</span>`,
     has(d,"gratis") && `<span class="chip c-free">Free</span>`,
     d.temperature!=null && d.temperature>=100 && `<span class="chip c-hot">${d.temperature}°</span>`,
     d.priceDrop && `<span class="chip c-drop">Price dropped from ${eur(d.priceDrop.from)}</span>`,
     isNew && `<span class="chip c-new">New</span>`,
+    !has(d,"picked") && hoursAgo(d)>96 && `<span class="chip c-old">${Math.floor(hoursAgo(d)/24)} days old · may have ended</span>`,
     ...(tab==="foryou"||view.layout==="lanes" ? why(d).filter(w=>!["Price error","Free"].includes(w)&&!/°/.test(w)&&!/^−\d/.test(w)).slice(0,2).map(w=>`<span class="chip c-why">${esc(w)}</span>`) : [])
   ].filter(Boolean).join("");
   const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;thumb ph&quot;>€</div>'">` : `<div class="thumb ph">€</div>`;
@@ -355,7 +399,7 @@ function card(d){
     <a href="${esc(d.link)}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">${img}</a>
     <div class="d-body">
       <a class="d-title" href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.title)}</a>
-      <div class="d-meta"><span class="store">${esc(d.merchant||d.source)}</span><span>${ago(d.published)}</span></div>
+      <div class="d-meta"><span class="store">${esc(d.merchant||d.source)}</span><span>${has(d,"picked")?"checked "+ago(d.published):ago(d.published)}</span></div>
       ${chips?`<div class="chips">${chips}</div>`:""}
     </div>
     <div class="deal-foot">
@@ -363,6 +407,7 @@ function card(d){
         <span class="now ${d.price===0?"free":""}">${d.price==null?"See deal":eur(d.price)}</span>
         ${d.wasPrice?`<span class="was">${eur(d.wasPrice)}</span>`:""}
         ${d.save?`<span class="save">Save ${eur(d.save)} (${d.pctOff}%)</span>`:""}
+        ${(()=>{const a=amazonUrl(d); return a?`<a class="amz" href="${esc(a)}" target="_blank" rel="sponsored noopener">Amazon*</a>`:"";})()}
         <button class="info" type="button" data-pop="${esc(d.id)}" aria-label="Savings and how to get it: ${esc(d.title)}">Savings &amp; how ⓘ</button>
       </div>
     </div>
@@ -380,9 +425,31 @@ function renderStores(){
   data.deals.forEach(d=>{if(d.merchant)c[d.merchant]=(c[d.merchant]||0)+1});
   $("store").innerHTML=`<option value="">All stores</option>`+Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,50).map(([m,n])=>`<option value="${esc(m)}" ${m===cur?"selected":""}>${esc(m)} (${n})</option>`).join("");
 }
+function renderSearchHead(toks){
+  const raw=$("q").value.trim();
+  if(!toks.length){
+    $("searchHead").innerHTML = `<div class="shead"><h1>Find the best deal for anything</h1><p>Search ${data.deals.length.toLocaleString("de-DE")} current German deals from mydealz, MyTopDeals, DealDoktor, mein-deal and our own research.</p>
+      <div class="qchips">${SITE.popularSearches.map(q=>`<button class="qchip" type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div></div>`;
+    return;
+  }
+  $("searchHead").innerHTML = `<div class="shead"><h1>Best deals for “${esc(raw)}”</h1>
+    <div class="scta"><a class="amz" href="${esc(amazonSearch(raw))}" target="_blank" rel="sponsored noopener">Search “${esc(raw)}” on Amazon*</a>
+    <a class="sec" href="https://www.idealo.de/preisvergleich/MainSearchProductCategory.html?q=${encodeURIComponent(raw)}" target="_blank" rel="noopener">Compare prices on idealo</a>
+    <a class="sec" href="#" data-clearq="1">Clear search</a></div></div>`;
+}
 function renderDeals(){
   const base = baseFilter(), sortBy=$("sort").value;
   const el = $("deals");
+  const toks = qTokens();
+  renderSearchHead(toks);
+  if(toks.length){
+    el.className = view.layout==="grid" ? "grid" : "list";
+    const hits = data.deals.map(d=>[d,searchScore(d,toks)]).filter(([,s])=>s>=0).sort((a,b)=>b[1]-a[1]).map(([d])=>d);
+    el.innerHTML = hits.length ? hits.slice(0,shown).map(card).join("") + (hits.length>shown?`<button class="tbtn more" id="more" type="button" style="grid-column:1/-1">Show more (${hits.length-shown} left)</button>`:"")
+      : `<div class="empty">No current deal matches “${esc($("q").value.trim())}”. Try fewer words, or use the Amazon and idealo buttons above to check today's price.</div>`;
+    $("hiddenNote").innerHTML="";
+    return;
+  }
   if(view.layout==="lanes"){
     el.className="lanes";
     el.innerHTML = LANES.map(([id,label])=>{
@@ -434,7 +501,8 @@ function popHTML(d){
     calc = `<div class="p-hero"><div class="p-price"><span class="now">${d.price==null?"Price in the post":eur(d.price,true)}</span></div>
       <div class="p-basis">This post doesn't name a usual or comparison price, so the exact saving is unknown. Use the price comparison link below to check it.</div></div>`;
   }
-  const steps = [`Open the deal at <b>${esc(d.merchant||d.source)}</b> using the button below.`];
+  const amz = amazonUrl(d);
+  const steps = [amz && /amazon/i.test(d.merchant||d.store||"amazon") ? `Open it on <b>Amazon</b> with the orange button below.` : `Open the deal at <b>${esc(d.merchant||d.source)}</b> using the button below.`];
   if(d.code) steps.push(`Enter the code <span class="code">${esc(d.code)} <button type="button" data-copy="${esc(d.code)}">Copy</button></span> at checkout.`);
   (d.conditions||[]).forEach(c=>steps.push(esc(c)+"."));
   if(d.cashback) steps.push(`Activate ${d.cashback}% cashback (e.g. via Shoop) before you buy.`);
@@ -446,8 +514,9 @@ function popHTML(d){
     <div><h4>How to get it</h4></div>
     <ol class="p-steps">${steps.map(s=>`<li>${s}</li>`).join("")}</ol>
     ${d.summary?`<div><h4>From the deal post</h4></div><div class="p-sum">${esc(d.summary)}</div>`:""}
-    <div class="p-basis">${d.temperature!=null?`${d.temperature}° community heat · `:""}Posted ${ago(d.published)} on ${esc(d.source)}</div>
-    <div class="p-links"><a href="${esc(d.link)}" target="_blank" rel="noopener">Open deal</a><a class="sec" href="${idealo}" target="_blank" rel="noopener">Compare on idealo</a></div>`;
+    <div class="p-basis">${d.temperature!=null?`${d.temperature}° community heat · `:""}${has(d,"picked") ? `Price checked by research on ${new Date(d.published).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} · ${esc(d.confidence)} confidence` : `Posted ${ago(d.published)} on ${esc(d.source)}`}</div>
+    ${amz?`<div class="p-basis">Amazon prices change often. The price above was seen ${has(d,"picked")?"during research":"on "+esc(d.source)} ${ago(d.published)}; Amazon shows today's price.</div>`:""}
+    <div class="p-links">${amz?`<a class="amz" href="${esc(amz)}" target="_blank" rel="sponsored noopener">${/amazon/i.test(d.merchant||"")||d.asin?"Buy on Amazon*":"Check on Amazon*"}</a>`:""}<a class="${amz?"sec":""}" href="${esc(d.link)}" target="_blank" rel="noopener">${amz?"Deal post":"Open deal"}</a>${d.sourceUrl&&d.sourceUrl!==d.link?`<a class="sec" href="${esc(d.sourceUrl)}" target="_blank" rel="noopener">Source</a>`:""}<a class="sec" href="${idealo}" target="_blank" rel="noopener">Compare on idealo</a></div>`;
 }
 function showPop(id, anchor){
   const d = data.deals.find(x=>x.id===id); if(!d) return;
@@ -516,8 +585,16 @@ $("profileBox").addEventListener("input",()=>{
 });
 
 /* ---------- other controls ---------- */
-$("nav").addEventListener("click",e=>{const b=e.target.closest("[data-t]"); if(!b) return; tab=b.dataset.t; S.set("tab",tab); shown=60; if(view.layout==="lanes"){view.layout="list";applyView();} renderNav(); renderDeals(); scrollTo({top:0});});
-["q","max","store","minpct","onlySave","sort"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;renderNav();renderDeals();}));
+$("nav").addEventListener("click",e=>{const b=e.target.closest("[data-t]"); if(!b) return; tab=b.dataset.t; S.set("tab",tab); shown=60; if($("q").value){ $("q").value=""; syncQ(); } if(view.layout==="lanes"){view.layout="list";applyView();} renderNav(); renderDeals(); scrollTo({top:0});});
+["max","store","minpct","onlySave","sort"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;renderNav();renderDeals();}));
+let qT=null;
+function syncQ(){ const v=$("q").value.trim(); try{ history.replaceState(null,"",v?`?q=${encodeURIComponent(v)}`:location.pathname); }catch{} }
+$("q").addEventListener("input",()=>{ clearTimeout(qT); qT=setTimeout(()=>{ shown=60; syncQ(); renderDeals(); },180); });
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-q]"); if(c){ $("q").value=c.dataset.q; shown=60; syncQ(); renderDeals(); scrollTo({top:0}); return; }
+  if(e.target.closest("[data-clearq]")){ e.preventDefault(); $("q").value=""; syncQ(); renderDeals(); }
+});
+try{ const q0=new URLSearchParams(location.search).get("q"); if(q0) $("q").value=q0; }catch{}
 $("deals").addEventListener("click",e=>{
   if(e.target.id==="more"){shown+=60;renderDeals();}
   const l=e.target.closest("[data-lane]"); if(l){laneShown[l.dataset.lane]=(laneShown[l.dataset.lane]||30)+30;renderDeals();}

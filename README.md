@@ -22,3 +22,17 @@ Open http://localhost:8787. Deals refresh every 3 minutes while it runs.
 4. Your site is at `https://<your-username>.github.io/deal-radar/`.
 
 Note: GitHub runs scheduled jobs every 5 minutes at best, and runs are often 10–15 minutes apart at busy times. GitHub pauses scheduled jobs after 60 days with no commits.
+
+## Amazon affiliate links
+
+Your Amazon Partner-ID lives in `public/config.js` (`amazonTag`). Every Amazon button on the site uses it:
+direct product links when the deal names the product (ASIN), otherwise an Amazon search for the product.
+Fill in `public/impressum.html` and `public/datenschutz.html` (yellow fields) before sharing the site.
+
+## Researched picks
+
+`data/picks.json` holds hand-researched deals. Add more by dropping JSON files into a folder and running:
+
+```bash
+node scripts/merge-picks.mjs path/to/folder
+```
