@@ -27,7 +27,7 @@ Note: GitHub runs scheduled jobs every 5 minutes at best, and runs are often 10â
 
 Your Amazon Partner-ID lives in `public/config.js` (`amazonTag`). Every Amazon button on the site uses it:
 direct product links when the deal names the product (ASIN), otherwise an Amazon search for the product.
-Fill in `public/impressum.html` and `public/datenschutz.html` (yellow fields) before sharing the site.
+Legal pages: `public/impressum.html` and `public/datenschutz.html`.
 
 ## Researched picks
 
