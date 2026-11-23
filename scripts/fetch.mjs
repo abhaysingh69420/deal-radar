@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkExpired } from "./expiry.mjs";
 import { tagDeals } from "./ai.mjs";
+import { dedupe } from "./dedupe.mjs";
 import { postNew } from "./telegram.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -274,6 +275,10 @@ export async function run() {
   const prev = await loadPrevious();
   const byId = new Map((prev.deals || []).map((d) => [d.id, d]));
   const expiredIds = new Set(prev.expiredIds || []);
+  // Copies of a deal on other sites, merged last round: they inherit the kept deal's first-seen time and
+  // Telegram state, so a copy never counts as a "new" deal.
+  const dupOf = new Map();
+  for (const d of prev.deals || []) for (const id of d.dupIds || []) dupOf.set(id, d);
   const SNAPSHOT_ONLY = !!process.env.SNAPSHOT_ONLY; // deploy job: no expiry checks, AI or Telegram posts
   const status = {};
   const now = new Date().toISOString();
@@ -293,6 +298,10 @@ export async function run() {
         if (old.checkedAt && old.temperature != null) d.temperature = old.temperature; // page check is fresher than the feed
         if (old.price != null && d.price != null && d.price < old.price) d.priceDrop = { from: old.price, at: now };
         else if (old.priceDrop) d.priceDrop = old.priceDrop;
+      } else if (dupOf.has(d.id)) {
+        const p = dupOf.get(d.id);
+        d.firstSeen = p.firstSeen || now;
+        if (p.tg) d.tg = 1;
       } else d.firstSeen = now;
       byId.set(d.id, d);
     }
@@ -302,20 +311,27 @@ export async function run() {
     .filter((d) => !d.flags.includes("picked") && !d.expired && new Date(d.published).getTime() > cutoff)
     .sort((a, b) => new Date(b.published) - new Date(a.published))
     .slice(0, MAX_ITEMS);
-  const picks = await loadPicks();
+  let picks = await loadPicks();
   for (const p of picks) { const old = byId.get(p.id); if (old) for (const k of ["ai", "tg", "tgSent"]) if (old[k] != null) p[k] = old[k]; }
+
+  // One entry per deal: merge the same deal posted on several sites (or as a pick and a post).
+  for (const d of [...picks, ...feedDeals]) delete d.dupIds, delete d.alsoOn;
+  const dd = dedupe([...picks, ...feedDeals]);
+  picks = dd.deals.filter((d) => d.flags.includes("picked"));
+  feedDeals = dd.deals.filter((d) => !d.flags.includes("picked"));
 
   const extra = [];
   const state = { tgInit: !!prev.tgInit };
   if (!SNAPSHOT_ONLY) {
     const ex = await checkExpired(feedDeals, { limit: +process.env.EXPIRY_BATCH || 40 });
-    for (const d of feedDeals) if (d.expired) expiredIds.add(d.id);
+    for (const d of feedDeals) if (d.expired) { expiredIds.add(d.id); for (const id of d.dupIds || []) expiredIds.add(id); }
     feedDeals = feedDeals.filter((d) => !d.expired);
     extra.push(`${ex.expired}/${ex.checked} checked expired`);
-    const ai = await tagDeals([...picks, ...feedDeals], { maxDeals: +process.env.AI_MAX || 60 });
+    const ai = await tagDeals([...picks, ...feedDeals], { maxDeals: +process.env.AI_MAX || 150 });
     if (ai.tagged || ai.failed) extra.push(`AI tagged ${ai.tagged}${ai.failed ? `, ${ai.failed} failed` : ""}`);
   }
   const deals = [...picks, ...feedDeals];
+  if (dd.removed) extra.unshift(`${dd.removed} duplicates merged`);
   if (!SNAPSHOT_ONLY) {
     const tg = await postNew(deals, state);
     if (tg.posted || tg.init) extra.push(tg.init ? "Telegram initialised" : `Telegram posted ${tg.posted}`);

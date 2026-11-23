@@ -101,7 +101,9 @@ aside{display:grid;gap:18px;align-content:start}
 .deal.isnew::before,.deal.match::before{content:"";position:absolute;left:-1.5px;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--blue)}
 .deal.match::before{background:var(--green)}
 .thumb{width:88px;height:88px;border-radius:10px;background:#fff;object-fit:contain;display:block;border:1px solid var(--line-2)}
-.thumb.ph{display:grid;place-items:center;font:900 1.6em var(--display);color:var(--muted);background:var(--bg)}
+.thumb.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);background:var(--bg);overflow:hidden}
+.thumb.ph .ph-i{font-size:2em;line-height:1}
+.thumb.ph .ph-s{font-size:.68em;font-weight:600;max-width:92%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .d-body{min-width:0;display:grid;gap:6px}
 .d-title{margin:0;font-weight:600;font-size:1.0625em;line-height:1.38;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none}
 .d-title:hover{text-decoration:underline;text-underline-offset:3px}
@@ -117,6 +119,8 @@ aside{display:grid;gap:18px;align-content:start}
 .c-drop{background:var(--green);color:#fff}
 .c-pick{background:var(--blue);color:#fff}
 .c-ai{background:color-mix(in srgb,var(--green) 16%,var(--surface));color:var(--green);border:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
+.c-ai.mid{background:var(--surface);color:var(--text);border-color:var(--line)}
+.c-ai.lo{background:transparent;color:var(--muted);border-color:var(--line-2)}
 .p-ai{background:color-mix(in srgb,var(--green) 10%,var(--bg));border-radius:12px;padding:10px 14px;font-weight:600}
 #setup{position:fixed;inset:0;z-index:60;background:rgba(10,12,14,.55);display:grid;place-items:center;padding:16px}
 .setup-card{background:var(--raised);color:var(--ink);border-radius:18px;box-shadow:var(--shadow);width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:22px;display:grid;gap:16px}
@@ -346,6 +350,12 @@ const eur = (n,force2) => n==null ? "" : n===0 ? "Free" : n.toLocaleString("de-D
 const kws = () => profile.kw.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean);
 const aiText = d => d.ai ? " "+[d.ai.type,d.ai.brand,...(d.ai.tags||[])].join(" ") : "";
 const kwHit = d => { const t=fold(d.title+" "+d.merchant+aiText(d)); return kws().find(w=>{ const f=fold(w).trim(); return f && f.split(" ").every(p=>t.includes(p)); }); };
+const CAT_ICON = {tech:"💻", gaming:"🎮", home:"🏠", fashion:"👟", food:"🛒", beauty:"🧴", kids:"🧸", travel:"✈️", contract:"📱", finance:"💶", apple:"", other:"🏷️"};
+function catIcon(d){
+  if(d.price===0||has(d,"gratis")) return "🎁";
+  const c = d.ai?.category || d.category || (has(d,"gaming")?"gaming":has(d,"tech")?"tech":has(d,"home")?"home":"other");
+  return CAT_ICON[c] || "🏷️";
+}
 const CAT_OF = {tech:"tech", gaming:"gaming", home:"home", food:"home", beauty:"home", kids:"home", fashion:"home"};
 const isCat = (d,c) => has(d,c) || (d.ai && CAT_OF[d.ai.category]===c);
 const hoursAgo = d => (Date.now()-new Date(d.published))/36e5;
@@ -412,6 +422,15 @@ function cleanTitle(t){
 function amazonSearch(q){ return `https://${SITE.amazonHost}/s?k=${encodeURIComponent(q)}${SITE.amazonTag?`&tag=${encodeURIComponent(SITE.amazonTag)}`:""}`; }
 // Any link that opens amazon.de carries the store tag.
 function dealHref(d){ try{ const u=new URL(d.link); if(/(^|\.)amazon\.de$/.test(u.hostname)&&SITE.amazonTag){ u.searchParams.set("tag",SITE.amazonTag); return u.href; } }catch{} return d.link; }
+// Where a click on a deal goes: always a link that earns (Amazon with tag, or the shop via Sovrn),
+// never the deal site. Deals naming no known shop open an Amazon search for the product.
+function goLink(d){
+  const a = amazonUrl(d);
+  if(a) return {url:a, label:/\/s\?k=/.test(a)?"Search on Amazon*":"Amazon*", amazon:true};
+  const sl = shopLink(d);
+  if(sl) return {url:sl.url, label:sl.label.replace(/^(Go to|Find at) /,"")+star(), amazon:false};
+  return {url:amazonSearch(cleanTitle(d.title)), label:"Search on Amazon*", amazon:true};
+}
 function amazonUrl(d){
   if(d.asin) return `https://${SITE.amazonHost}/dp/${d.asin}${SITE.amazonTag?`?tag=${encodeURIComponent(SITE.amazonTag)}`:""}`;
   try{ const u=new URL(d.link); if(/(^|\.)amazon\.de$/.test(u.hostname)){ if(SITE.amazonTag) u.searchParams.set("tag",SITE.amazonTag); return u.href; } }catch{}
@@ -448,6 +467,36 @@ const SHOP_SEARCH = [
   [/ikea/i,"IKEA","https://www.ikea.com/de/de/search/?q="],
   [/tchibo/i,"Tchibo","https://www.tchibo.de/search?q="],
   [/mindfactory/i,"Mindfactory","https://www.mindfactory.de/search_result.php?search_query="],
+  [/joybuy/i,"Joybuy","https://www.joybuy.de/search?keyword="],
+  [/m(ü|ue)ller/i,"Müller","https://www.mueller.de/search/?q="],
+  [/rossmann/i,"Rossmann","https://www.rossmann.de/de/search/?text="],
+  [/^dm\b|dm-drogerie/i,"dm","https://www.dm.de/search?query="],
+  [/penny/i,"PENNY","https://www.penny.de/suche?q="],
+  [/^aldi/i,"ALDI","https://www.aldi-sued.de/de/suchergebnis.html?search="],
+  [/edeka/i,"EDEKA","https://www.edeka.de/suche.jsp?q="],
+  [/^rewe/i,"REWE","https://shop.rewe.de/productList?search="],
+  [/steam/i,"Steam","https://store.steampowered.com/search/?term="],
+  [/epic games/i,"Epic Games","https://store.epicgames.com/de/browse?q="],
+  [/playstation/i,"PlayStation Store","https://store.playstation.com/de-de/search/"],
+  [/nintendo/i,"Nintendo eShop","https://www.nintendo.com/de-de/Suche/Suche-299117.html?q="],
+  [/google play/i,"Google Play","https://play.google.com/store/search?q="],
+  [/apple ?(store|tv)|app store|itunes/i,"Apple","https://www.apple.com/de/search/%s"],
+  [/conrad/i,"Conrad","https://www.conrad.de/de/search.html?search="],
+  [/hornbach/i,"Hornbach","https://www.hornbach.de/s/"],
+  [/obi\b/i,"OBI","https://www.obi.de/search/%s/"],
+  [/bauhaus/i,"Bauhaus","https://www.bauhaus.info/suche/produkte?text="],
+  [/decathlon/i,"Decathlon","https://www.decathlon.de/search?Ntt="],
+  [/h&m|h ?& ?m/i,"H&M","https://www2.hm.com/de_de/search-results.html?q="],
+  [/snipes/i,"Snipes","https://www.snipes.com/search?q="],
+  [/teufel/i,"Teufel","https://www.teufel.de/search?q="],
+  [/dell/i,"Dell","https://www.dell.com/de-de/search/"],
+  [/lenovo/i,"Lenovo","https://www.lenovo.com/de/de/search?text="],
+  [/hp\b|hewlett/i,"HP","https://www.hp.com/de-de/shop/catalogsearch/result/?q="],
+  [/xiaomi/i,"Xiaomi","https://www.mi.com/de/search/%s"],
+  [/home24/i,"home24","https://www.home24.de/suche/?query="],
+  [/jysk/i,"JYSK","https://jysk.de/search?query="],
+  [/medimops/i,"medimops","https://www.medimops.de/produkte-C0/?fcIsSearch=1&searchString="],
+  [/bol\.com|bol$/i,"bol","https://www.bol.de/shop/home/suche/?sq="],
 ];
 const NO_WRAP = /mydealz|mytopdeals|dealdoktor|mein-deal|amazon\./i;
 function wrapAff(url){
@@ -497,17 +546,19 @@ function card(d){
     has(d,"picked") && `<span class="chip c-pick">Researched${d.confidence&&d.confidence!=="high"?" · "+d.confidence+" confidence":""}</span>`,
     has(d,"gratis") && `<span class="chip c-free">Free</span>`,
     d.temperature!=null && d.temperature>=100 && `<span class="chip c-hot">${d.temperature}°</span>`,
-    d.ai?.score>=8 && `<span class="chip c-ai" title="${esc(d.ai.verdict)}">AI ${d.ai.score}/10</span>`,
+    d.ai && `<span class="chip c-ai ${d.ai.score>=8?"hi":d.ai.score>=6?"mid":"lo"}" title="AI rating: ${esc(d.ai.verdict)}">AI ${d.ai.score}/10</span>`,
     d.priceDrop && `<span class="chip c-drop">Price dropped from ${eur(d.priceDrop.from)}</span>`,
     isNew && `<span class="chip c-new">New</span>`,
     !has(d,"picked") && hoursAgo(d)>96 && `<span class="chip c-old">${Math.floor(hoursAgo(d)/24)} days old · may have ended</span>`,
     ...(tab==="foryou"||view.layout==="lanes" ? why(d).filter(w=>!["Price error","Free"].includes(w)&&!/°/.test(w)&&!/^−\d/.test(w)&&!/^AI /.test(w)).slice(0,2).map(w=>`<span class="chip c-why">${esc(w)}</span>`) : [])
   ].filter(Boolean).join("");
-  const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;thumb ph&quot;>€</div>'">` : `<div class="thumb ph">€</div>`;
+  const go = goLink(d);
+  const ph = `<div class="thumb ph"><span class="ph-i">${catIcon(d)}</span><span class="ph-s">${esc((d.merchant||d.store||"").slice(0,14))}</span></div>`;
+  const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb ph',innerHTML:this.dataset.ph}))" data-ph="${esc(ph.replace(/^<div class="thumb ph">|<\/div>$/g,""))}">` : ph;
   return `<article class="deal ${pf?"pf":""} ${k?"match":isNew?"isnew":""}" data-id="${esc(d.id)}">
-    <a href="${esc(dealHref(d))}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">${img}</a>
+    <a href="${esc(go.url)}" target="_blank" rel="sponsored noopener" tabindex="-1" aria-hidden="true">${img}</a>
     <div class="d-body">
-      <a class="d-title" href="${esc(dealHref(d))}" target="_blank" rel="noopener">${esc(d.title)}</a>
+      <a class="d-title" href="${esc(go.url)}" target="_blank" rel="sponsored noopener">${esc(d.title)}</a>
       <div class="d-meta"><span class="store">${esc(d.merchant||d.source)}</span><span>${has(d,"picked")?"checked "+ago(d.published):ago(d.published)}</span></div>
       ${chips?`<div class="chips">${chips}</div>`:""}
     </div>
@@ -516,7 +567,7 @@ function card(d){
         <span class="now ${d.price===0?"free":""}">${d.price==null?"See deal":eur(d.price)}</span>
         ${d.wasPrice?`<span class="was">${eur(d.wasPrice)}</span>`:""}
         ${d.save?`<span class="save">Save ${eur(d.save)} (${d.pctOff}%)</span>`:""}
-        ${(()=>{const a=amazonUrl(d); if(a) return `<a class="amz" href="${esc(a)}" target="_blank" rel="sponsored noopener">Amazon*</a>`; const sl=shopLink(d); return sl?`<a class="shop" href="${esc(sl.url)}" target="_blank" rel="${affOn()?"sponsored ":""}noopener" title="${esc(sl.label)}">${esc(sl.label.replace(/^(Go to|Find at) /,""))}${star()}</a>`:"";})()}
+        <a class="${go.amazon?"amz":"shop"}" href="${esc(go.url)}" target="_blank" rel="sponsored noopener">${esc(go.label)}</a>
         <button class="info" type="button" data-pop="${esc(d.id)}" aria-label="Savings and how to get it: ${esc(d.title)}">Savings &amp; how ⓘ</button>
       </div>
     </div>
@@ -628,7 +679,7 @@ function popHTML(d){
     <div class="p-basis">${d.temperature!=null?`${d.temperature}° community heat · `:""}${has(d,"picked") ? `Price checked by research on ${new Date(d.published).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} · ${esc(d.confidence)} confidence` : `Posted ${ago(d.published)} on ${esc(d.source)}`}</div>
     ${amz?`<div class="p-basis">Amazon prices change often. The price above was seen ${has(d,"picked")?"during research":"on "+esc(d.source)} ${ago(d.published)}; Amazon shows today's price.</div>`:""}
     ${sl && !sl.direct?`<div class="p-basis">This post has no direct shop link, so the button searches ${esc(sl.label.replace(/^Find at /,""))} for this product.</div>`:""}
-    <div class="p-links">${amz?`<a class="amz" href="${esc(amz)}" target="_blank" rel="sponsored noopener">${/amazon/i.test(d.merchant||"")||d.asin?"Buy on Amazon*":"Check on Amazon*"}</a>`:""}${sl?`<a class="shop" href="${esc(sl.url)}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">${esc(sl.label)}${star()}</a>`:""}<a class="${amz||sl?"sec":""}" href="${esc(dealHref(d))}" target="_blank" rel="noopener">${amz||sl?"Deal post":"Open deal"}</a>${d.sourceUrl&&d.sourceUrl!==d.link?`<a class="sec" href="${esc(d.sourceUrl)}" target="_blank" rel="noopener">Source</a>`:""}<a class="sec" href="${esc(idealoUrl(cleanTitle(d.title)))}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">Compare on idealo${star()}</a></div>`;
+    <div class="p-links">${amz?`<a class="amz" href="${esc(amz)}" target="_blank" rel="sponsored noopener">${/\/s\?k=/.test(amz)?"Search on Amazon*":"Buy on Amazon*"}</a>`:""}${sl?`<a class="shop" href="${esc(sl.url)}" target="_blank" rel="sponsored noopener">${esc(sl.label)}${star()}</a>`:""}${!amz&&!sl?`<a class="amz" href="${esc(goLink(d).url)}" target="_blank" rel="sponsored noopener">Search on Amazon*</a>`:""}<a class="sec" href="${esc(idealoUrl(cleanTitle(d.title)))}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">Compare on idealo${star()}</a></div>`;
 }
 function showPop(id, anchor){
   const d = data.deals.find(x=>x.id===id); if(!d) return;
@@ -753,7 +804,7 @@ $("notify").addEventListener("click",async()=>{
 function alertNew(fresh){
   if(!notifyOn||!fresh.length) return;
   fresh.filter(d=>!hiddenByProfile(d) && (has(d,"preisfehler")||kwHit(d))).slice(0,3).forEach(d=>{
-    try{ const n=new Notification((has(d,"preisfehler")?"Preisfehler: ":"Keyword match: ")+(d.price!=null?eur(d.price):""),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(dealHref(d),"_blank"); }catch{}
+    try{ const n=new Notification((has(d,"preisfehler")?"Preisfehler: ":"Keyword match: ")+(d.price!=null?eur(d.price):""),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(goLink(d).url,"_blank"); }catch{}
   });
 }
 async function load(){

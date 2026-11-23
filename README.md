@@ -59,3 +59,9 @@ one-line verdict. The key stays in GitHub and never reaches the website.
 
 Every round the updater checks up to 40 mydealz deal pages and removes deals marked as expired.
 Other deals drop out of the index after 7 days; researched picks after their end date.
+
+## Picks: images
+After adding picks with `merge-picks.mjs`, run `node scripts/pick-images.mjs` to add product photos (single-deal pages and shop pages only; round-up banners are skipped).
+
+## Duplicates
+`scripts/dedupe.mjs` merges the same deal posted on several sites every round (same ASIN, shop URL, or product title at the same price and shop).

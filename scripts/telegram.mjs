@@ -38,7 +38,8 @@ function buyLink(d, c) {
       : c.sovrnKey ? `https://redirect.viglink.com?key=${c.sovrnKey}&u=${encodeURIComponent(d.shopUrl)}` : d.shopUrl;
     return { url: u, label: (d.merchant || "Shop") + (c.skimlinksId || c.sovrnKey ? "*" : "") };
   }
-  return null;
+  // No known shop link: search the product on Amazon (tagged), never link the deal site.
+  return { url: `https://www.amazon.de/s?k=${encodeURIComponent(d.title.split(/\s(für|ab|nur)\s/)[0].slice(0, 80))}&tag=${c.amazonTag}`, label: "Auf Amazon suchen*" };
 }
 
 function message(d, c, channel) {
@@ -52,7 +53,7 @@ function message(d, c, channel) {
     d.ai?.verdict && `🤖 ${esc(d.ai.verdict)}`,
     d.code && `Code: <code>${esc(d.code)}</code>`,
     "",
-    [buy && `<a href="${esc(buy.url)}">👉 ${esc(buy.label)}</a>`, !/amazon\.|amzn\.|link\.amazon/i.test(d.link) && `<a href="${esc(d.link)}">Deal</a>`, `<a href="${c.siteUrl}/?q=${encodeURIComponent((d.ai?.type || d.title).slice(0, 40))}">Mehr Deals</a>`].filter(Boolean).join(" · "),
+    [buy && `<a href="${esc(buy.url)}">👉 ${esc(buy.label)}</a>`, `<a href="${c.siteUrl}/?q=${encodeURIComponent((d.ai?.type || d.title).slice(0, 40))}">Mehr Deals</a>`].filter(Boolean).join(" · "),
     buy?.label.endsWith("*") ? "<i>*Affiliate-Link. Als Amazon-Partner verdiene ich an qualifizierten Verkäufen.</i>" : "",
   ];
   return lines.filter((l) => l !== false && l != null).join("\n").replace(/\n{3,}/g, "\n\n").trim();
