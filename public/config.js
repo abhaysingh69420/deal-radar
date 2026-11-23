@@ -9,7 +9,7 @@ window.SITE = {
   // Sovrn Commerce: your API key from the Sovrn dashboard (Commerce → Settings → Site & API key).
   // Skimlinks is used if both are set. Leave both empty to link to shops directly.
   skimlinksId: "",
-  sovrnKey: "",
+  sovrnKey: "34c3ebab61f067098f57b65e4fea5766",
   siteUrl: "https://deals.maskali.dev",
   // Telegram channels for alerts, e.g. "@dealradar_preisfehler". Leave empty to hide a channel.
   // The bot posts there when the TELEGRAM_BOT_TOKEN secret is set in GitHub.

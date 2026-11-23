@@ -410,6 +410,8 @@ function cleanTitle(t){
     .replace(/\s(für|ab|nur|um|zum|@|bei|jetzt)\s.*$/i,"").replace(/[\p{Extended_Pictographic}|–—]/gu," ").replace(/\s+/g," ").trim().split(" ").slice(0,9).join(" ");
 }
 function amazonSearch(q){ return `https://${SITE.amazonHost}/s?k=${encodeURIComponent(q)}${SITE.amazonTag?`&tag=${encodeURIComponent(SITE.amazonTag)}`:""}`; }
+// Any link that opens amazon.de carries the store tag.
+function dealHref(d){ try{ const u=new URL(d.link); if(/(^|\.)amazon\.de$/.test(u.hostname)&&SITE.amazonTag){ u.searchParams.set("tag",SITE.amazonTag); return u.href; } }catch{} return d.link; }
 function amazonUrl(d){
   if(d.asin) return `https://${SITE.amazonHost}/dp/${d.asin}${SITE.amazonTag?`?tag=${encodeURIComponent(SITE.amazonTag)}`:""}`;
   try{ const u=new URL(d.link); if(/(^|\.)amazon\.de$/.test(u.hostname)){ if(SITE.amazonTag) u.searchParams.set("tag",SITE.amazonTag); return u.href; } }catch{}
@@ -503,9 +505,9 @@ function card(d){
   ].filter(Boolean).join("");
   const img = d.image ? `<img class="thumb" src="${esc(d.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;thumb ph&quot;>€</div>'">` : `<div class="thumb ph">€</div>`;
   return `<article class="deal ${pf?"pf":""} ${k?"match":isNew?"isnew":""}" data-id="${esc(d.id)}">
-    <a href="${esc(d.link)}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">${img}</a>
+    <a href="${esc(dealHref(d))}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">${img}</a>
     <div class="d-body">
-      <a class="d-title" href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.title)}</a>
+      <a class="d-title" href="${esc(dealHref(d))}" target="_blank" rel="noopener">${esc(d.title)}</a>
       <div class="d-meta"><span class="store">${esc(d.merchant||d.source)}</span><span>${has(d,"picked")?"checked "+ago(d.published):ago(d.published)}</span></div>
       ${chips?`<div class="chips">${chips}</div>`:""}
     </div>
@@ -626,7 +628,7 @@ function popHTML(d){
     <div class="p-basis">${d.temperature!=null?`${d.temperature}° community heat · `:""}${has(d,"picked") ? `Price checked by research on ${new Date(d.published).toLocaleDateString("en-GB",{day:"numeric",month:"short"})} · ${esc(d.confidence)} confidence` : `Posted ${ago(d.published)} on ${esc(d.source)}`}</div>
     ${amz?`<div class="p-basis">Amazon prices change often. The price above was seen ${has(d,"picked")?"during research":"on "+esc(d.source)} ${ago(d.published)}; Amazon shows today's price.</div>`:""}
     ${sl && !sl.direct?`<div class="p-basis">This post has no direct shop link, so the button searches ${esc(sl.label.replace(/^Find at /,""))} for this product.</div>`:""}
-    <div class="p-links">${amz?`<a class="amz" href="${esc(amz)}" target="_blank" rel="sponsored noopener">${/amazon/i.test(d.merchant||"")||d.asin?"Buy on Amazon*":"Check on Amazon*"}</a>`:""}${sl?`<a class="shop" href="${esc(sl.url)}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">${esc(sl.label)}${star()}</a>`:""}<a class="${amz||sl?"sec":""}" href="${esc(d.link)}" target="_blank" rel="noopener">${amz||sl?"Deal post":"Open deal"}</a>${d.sourceUrl&&d.sourceUrl!==d.link?`<a class="sec" href="${esc(d.sourceUrl)}" target="_blank" rel="noopener">Source</a>`:""}<a class="sec" href="${esc(idealoUrl(cleanTitle(d.title)))}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">Compare on idealo${star()}</a></div>`;
+    <div class="p-links">${amz?`<a class="amz" href="${esc(amz)}" target="_blank" rel="sponsored noopener">${/amazon/i.test(d.merchant||"")||d.asin?"Buy on Amazon*":"Check on Amazon*"}</a>`:""}${sl?`<a class="shop" href="${esc(sl.url)}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">${esc(sl.label)}${star()}</a>`:""}<a class="${amz||sl?"sec":""}" href="${esc(dealHref(d))}" target="_blank" rel="noopener">${amz||sl?"Deal post":"Open deal"}</a>${d.sourceUrl&&d.sourceUrl!==d.link?`<a class="sec" href="${esc(d.sourceUrl)}" target="_blank" rel="noopener">Source</a>`:""}<a class="sec" href="${esc(idealoUrl(cleanTitle(d.title)))}" target="_blank" rel="${affOn()?"sponsored ":""}noopener">Compare on idealo${star()}</a></div>`;
 }
 function showPop(id, anchor){
   const d = data.deals.find(x=>x.id===id); if(!d) return;
@@ -751,7 +753,7 @@ $("notify").addEventListener("click",async()=>{
 function alertNew(fresh){
   if(!notifyOn||!fresh.length) return;
   fresh.filter(d=>!hiddenByProfile(d) && (has(d,"preisfehler")||kwHit(d))).slice(0,3).forEach(d=>{
-    try{ const n=new Notification((has(d,"preisfehler")?"Preisfehler: ":"Keyword match: ")+(d.price!=null?eur(d.price):""),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(d.link,"_blank"); }catch{}
+    try{ const n=new Notification((has(d,"preisfehler")?"Preisfehler: ":"Keyword match: ")+(d.price!=null?eur(d.price):""),{body:d.title,icon:d.image||undefined,tag:d.id}); n.onclick=()=>window.open(dealHref(d),"_blank"); }catch{}
   });
 }
 async function load(){

@@ -1,7 +1,13 @@
 // DeepSeek tagging: gives each new deal a product type, brand, search tags, category, a 1–10 deal score
 // and a one-line verdict. Runs only when DEEPSEEK_API_KEY is set (GitHub secret). The key never reaches the website.
 const KEY = process.env.DEEPSEEK_API_KEY;
-const URL_ = "https://api.deepseek.com/chat/completions";
+const URL_ = process.env.DEEPSEEK_URL || "https://api.deepseek.com/chat/completions";
+// Cheapest model (deepseek-flash, Nov 2026 price list). Thinking is on by default and bills extra
+// output tokens, so it is turned off: tagging doesn't need it. The fixed system prompt comes first,
+// so DeepSeek's automatic context cache bills it at the cache-hit rate after the first call.
+const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-flash";
+// USD per 1M tokens (peak rates; off-peak is half): cache hit, cache miss, output.
+const PRICE = { hit: 0.006, miss: 0.3, out: 1.2 };
 const CATS = ["tech", "gaming", "home", "fashion", "food", "beauty", "kids", "travel", "contract", "finance", "other"];
 
 const SYSTEM = `You rate German shopping deals for a deal website. For each deal return JSON.
@@ -17,6 +23,7 @@ export async function tagDeals(deals, { maxDeals = 60, batch = 20 } = {}) {
   if (!KEY) return { tagged: 0, skipped: "no key" };
   const todo = deals.filter((d) => !d.ai && !d.expired).slice(0, maxDeals);
   let tagged = 0, failed = 0;
+  const use = { hit: 0, miss: 0, out: 0 };
   for (let k = 0; k < todo.length; k += batch) {
     const chunk = todo.slice(k, k + batch);
     const list = chunk.map((d, i) => ({
@@ -28,13 +35,18 @@ export async function tagDeals(deals, { maxDeals = 60, batch = 20 } = {}) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
         body: JSON.stringify({
-          model: "deepseek-chat", temperature: 0.2, response_format: { type: "json_object" },
+          model: MODEL, thinking: { type: "disabled" }, temperature: 0.2, response_format: { type: "json_object" },
           messages: [{ role: "system", content: SYSTEM }, { role: "user", content: JSON.stringify(list) }],
         }),
         signal: AbortSignal.timeout(60000),
       });
-      if (!r.ok) { failed += chunk.length; console.error("  DeepSeek HTTP", r.status); if (r.status === 401 || r.status === 402) break; continue; }
-      const out = parseItems((await r.json()).choices?.[0]?.message?.content);
+      if (!r.ok) { failed += chunk.length; console.error("  DeepSeek HTTP", r.status, (await r.text().catch(() => "")).slice(0, 200).split(KEY).join("***")); if (r.status === 401 || r.status === 402) break; continue; }
+      const res = await r.json();
+      const u = res.usage || {};
+      use.hit += u.prompt_cache_hit_tokens || 0;
+      use.miss += u.prompt_cache_miss_tokens ?? (u.prompt_tokens || 0);
+      use.out += u.completion_tokens || 0;
+      const out = parseItems(res.choices?.[0]?.message?.content);
       for (const it of out) {
         const d = chunk[it.i];
         if (!d) continue;
@@ -49,7 +61,9 @@ export async function tagDeals(deals, { maxDeals = 60, batch = 20 } = {}) {
       }
     } catch (e) { failed += chunk.length; console.error("  DeepSeek error:", KEY ? String(e.message).split(KEY).join("***") : e.message); }
   }
-  return { tagged, failed };
+  const usd = (use.hit * PRICE.hit + use.miss * PRICE.miss + use.out * PRICE.out) / 1e6;
+  if (tagged || failed) console.log(`  DeepSeek ${MODEL}: ${use.miss + use.hit} in (${use.hit} cached) / ${use.out} out tokens, about $${usd.toFixed(4)} (peak price)`);
+  return { tagged, failed, usd };
 }
 
 export function parseItems(content) {
