@@ -27,6 +27,8 @@ jobs:
       - name: Refresh deals every 5 minutes
         env:
           PREVIOUS_URL: https://raw.githubusercontent.com/${{ github.repository }}/data/deals.json
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           DURATION_MIN: "340"
           INTERVAL_SEC: "300"
         run: node scripts/loop.mjs

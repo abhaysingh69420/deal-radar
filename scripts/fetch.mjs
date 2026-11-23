@@ -4,10 +4,13 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkExpired } from "./expiry.mjs";
+import { tagDeals } from "./ai.mjs";
+import { postNew } from "./telegram.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "public", "deals.json");
-const KEEP_HOURS = 14 * 24; // searchable index: two weeks of deals
+const KEEP_HOURS = 7 * 24; // searchable index: one week; expired mydealz deals are removed sooner
 const MAX_ITEMS = 4000;
 
 const MD = "https://www.mydealz.de/rss/";
@@ -108,6 +111,28 @@ function amazonInfo(link, html, merchant) {
   return { asin: m ? m[1].toUpperCase() : null, isAmazon };
 }
 
+// Direct link to the shop's product page, taken from the post body. Links that already carry someone
+// else's affiliate redirect, social/media links and deal-site links are skipped; tracking params are removed.
+const NOT_SHOP = /amazon\.|link\.amazon|keepa|camelcamel|imdb|brickmerge|werzahltmehr|china-gadgets|hardwareluxx|computerbase|mydealz|pepper\.|static\.|idealo|geizhals|mytopdeals|dealdoktor|mein-deal|preisjaeger|youtube|youtu\.be|twitter|(^|\.)x\.com|facebook|instagram|wikipedia|reddit|t\.me|whatsapp|tiktok|imgur|gravatar|wp\.com|google\.|apple\.com\/de\/newsroom|topcashback|shoop|chip\.de|computerbild|netzwelt|pcgameshardware|giga\.de|pc-welt|connect-living|katzeausdemsack|gamerguru|t-online|stern\.de|bild\.de|focus\.de/i;
+const AFF_HOST = /awin1|prf\.hn|tradedoubler|webmasterplan|zanox|skimresources|viglink|s\.click\.aliexpress|amzn\.(to|eu)|bit\.ly|tidd\.ly|^go\.|redirect|^clk\.|track|partners?\.|affili|linksynergy|pvn\.|digidip|belboon|adcell|financeads/i;
+const TRACK_PARAM = /^(utm_\w+|tag|ref|ref_|affid|aff|aff_id|affiliate|partner|partnerid|awc|clickref|subid|sub_id|wt_mc|wt_cc\d|emid|gclid|fbclid|msclkid|mc_cid|mc_eid|campaign|cmpid|ito|ascsubtag|linkcode|creative|camp|psc|th)$/i;
+function cleanShopUrl(u) {
+  try {
+    const url = new URL(u);
+    if (!/^https?:$/.test(url.protocol) || NOT_SHOP.test(url.hostname + url.pathname) || AFF_HOST.test(url.hostname)) return null;
+    for (const k of [...url.searchParams.keys()]) if (TRACK_PARAM.test(k)) url.searchParams.delete(k);
+    url.hash = "";
+    return url.href;
+  } catch { return null; }
+}
+function extractShopUrl(html) {
+  for (const m of (html || "").matchAll(/<a[^>]+href="(https?:\/\/[^"]+)"/g)) {
+    const c = cleanShopUrl(decode(m[1]));
+    if (c) return c;
+  }
+  return null;
+}
+
 function extractCode(text) {
   const m = text.match(/(?:Gutscheincode|Rabattcode|Promocode|Promo-Code|Aktionscode|Code)\s*[:=]?\s*[„"»'‚]?([A-Z0-9][A-Z0-9_-]{3,19})\b/);
   if (!m) return null;
@@ -178,6 +203,7 @@ function parseItems(xml, feed) {
       temperature,
       summary: text.slice(0, 300),
       ...amazonInfo(link, decode(rawDesc), merchant),
+      shopUrl: extractShopUrl(decode(rawDesc)),
       category: cats[0] || "",
       source: feed.source,
       flags: [...flags],
@@ -222,13 +248,15 @@ async function loadPicks() {
     flags.add("blackweek");
     const save = p.wasPrice ? Math.round((p.wasPrice - p.price) * 100) / 100 : null;
     return {
-      id: "pick:" + p.url, title: p.title, link: p.url, merchant: p.store, price: p.price, image: p.image || "",
+      id: "pick:" + p.url, title: p.title,
+      link: /link\.amazon|amzn\.(to|eu)|[?&]tag=/i.test(p.url) ? (p.asin ? `https://www.amazon.de/dp/${p.asin}` : (p.sourceUrl || p.url)) : p.url,
+      merchant: p.store, price: p.price, image: p.image || "",
       wasPrice: p.wasPrice ?? null, pctOff: p.wasPrice ? Math.round((1 - p.price / p.wasPrice) * 100) : null,
       basis: p.wasBasis ? { UVP: "manufacturer list price (UVP)", "comparison price": "comparison price (Preisvergleich / idealo)", "previous price": "regular price at the store", "lowest-price-30-days": "lowest price of the last 30 days" }[p.wasBasis] || p.wasBasis : null,
       save, code: p.code || null, cashback: null, shipping: null,
       conditions: p.conditions ? [p.conditions] : [], temperature: null,
       summary: [p.note, `Checked ${p.seenDate} (${p.confidence} confidence).`, p.sourceUrl && p.sourceUrl !== p.url ? `Source: ${p.sourceUrl}` : ""].filter(Boolean).join(" "),
-      asin: p.asin || null, isAmazon: !!p.asin || /amazon/i.test(p.store || ""),
+      asin: p.asin || null, isAmazon: !!p.asin || /amazon/i.test(p.store || ""), shopUrl: cleanShopUrl(p.url),
       category: p.category, source: "Researched pick", sourceUrl: p.sourceUrl, confidence: p.confidence,
       flags: [...flags], published: new Date(p.seenDate + "T12:00:00+01:00").toISOString(), firstSeen: p.addedAt || new Date(p.seenDate).toISOString(),
     };
@@ -245,6 +273,8 @@ async function pool(list, n, fn) {
 export async function run() {
   const prev = await loadPrevious();
   const byId = new Map((prev.deals || []).map((d) => [d.id, d]));
+  const expiredIds = new Set(prev.expiredIds || []);
+  const SNAPSHOT_ONLY = !!process.env.SNAPSHOT_ONLY; // deploy job: no expiry checks, AI or Telegram posts
   const status = {};
   const now = new Date().toISOString();
   const cutoff = Date.now() - KEEP_HOURS * 3600e3;
@@ -253,13 +283,14 @@ export async function run() {
   for (const [feed, res] of results) {
     status[feed.id] = { ok: res.ok, count: res.items.length };
     for (const d of res.items) {
-      if (new Date(d.published).getTime() < cutoff) continue; // skip old evergreen posts
+      if (new Date(d.published).getTime() < cutoff || expiredIds.has(d.id)) continue; // old or known-expired
       const old = byId.get(d.id);
       if (old) {
         d.firstSeen = old.firstSeen || now;
         d.flags = [...new Set([...(old.flags || []), ...d.flags])];
         d.temperature = d.temperature ?? old.temperature ?? null;
-        for (const k of ["wasPrice", "pctOff", "basis", "save", "code", "asin"]) if (d[k] == null && old[k] != null) d[k] = old[k];
+        for (const k of ["wasPrice", "pctOff", "basis", "save", "code", "asin", "shopUrl", "ai", "checkedAt", "tg", "tgSent"]) if (d[k] == null && old[k] != null) d[k] = old[k];
+        if (old.checkedAt && old.temperature != null) d.temperature = old.temperature; // page check is fresher than the feed
         if (old.price != null && d.price != null && d.price < old.price) d.priceDrop = { from: old.price, at: now };
         else if (old.priceDrop) d.priceDrop = old.priceDrop;
       } else d.firstSeen = now;
@@ -267,16 +298,33 @@ export async function run() {
     }
   }
 
-  const feedDeals = [...byId.values()]
-    .filter((d) => !d.flags.includes("picked") && new Date(d.published).getTime() > cutoff)
+  let feedDeals = [...byId.values()]
+    .filter((d) => !d.flags.includes("picked") && !d.expired && new Date(d.published).getTime() > cutoff)
     .sort((a, b) => new Date(b.published) - new Date(a.published))
     .slice(0, MAX_ITEMS);
-  const deals = [...(await loadPicks()), ...feedDeals];
+  const picks = await loadPicks();
+  for (const p of picks) { const old = byId.get(p.id); if (old) for (const k of ["ai", "tg", "tgSent"]) if (old[k] != null) p[k] = old[k]; }
+
+  const extra = [];
+  const state = { tgInit: !!prev.tgInit };
+  if (!SNAPSHOT_ONLY) {
+    const ex = await checkExpired(feedDeals, { limit: +process.env.EXPIRY_BATCH || 40 });
+    for (const d of feedDeals) if (d.expired) expiredIds.add(d.id);
+    feedDeals = feedDeals.filter((d) => !d.expired);
+    extra.push(`${ex.expired}/${ex.checked} checked expired`);
+    const ai = await tagDeals([...picks, ...feedDeals], { maxDeals: +process.env.AI_MAX || 60 });
+    if (ai.tagged || ai.failed) extra.push(`AI tagged ${ai.tagged}${ai.failed ? `, ${ai.failed} failed` : ""}`);
+  }
+  const deals = [...picks, ...feedDeals];
+  if (!SNAPSHOT_ONLY) {
+    const tg = await postNew(deals, state);
+    if (tg.posted || tg.init) extra.push(tg.init ? "Telegram initialised" : `Telegram posted ${tg.posted}`);
+  }
 
   await mkdir(dirname(OUT), { recursive: true });
-  await writeFile(OUT, JSON.stringify({ updatedAt: now, feeds: status, deals }));
+  await writeFile(OUT, JSON.stringify({ updatedAt: now, feeds: status, tgInit: state.tgInit, expiredIds: [...expiredIds].slice(-3000), deals }));
   const okCount = Object.values(status).filter((s) => s.ok).length;
-  console.log(`[${now}] ${deals.length} deals · ${okCount}/${FEEDS.length} feeds ok · ${deals.filter((d) => d.flags.includes("preisfehler")).length} Preisfehler · ${deals.filter((d) => d.save != null).length} with savings`);
+  console.log(`[${now}] ${deals.length} deals · ${okCount}/${FEEDS.length} feeds ok · ${deals.filter((d) => d.flags.includes("preisfehler")).length} Preisfehler · ${deals.filter((d) => d.save != null).length} with savings${extra.length ? " · " + extra.join(" · ") : ""}`);
   return { okCount };
 }
 

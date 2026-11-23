@@ -36,3 +36,26 @@ Legal pages: `public/impressum.html` and `public/datenschutz.html`.
 ```bash
 node scripts/merge-picks.mjs path/to/folder
 ```
+
+## Shop affiliate links (Skimlinks / Sovrn)
+
+Set `skimlinksId` or `sovrnKey` in `public/config.js`. Shop buttons then go through that network's link
+wrapper (no script on the page, so no cookie banner is needed).
+
+## AI tagging (DeepSeek)
+
+Add a repository secret `DEEPSEEK_API_KEY` (Settings → Secrets and variables → Actions → New repository secret).
+The live updater then tags up to 60 new deals per round with product type, brand, search tags, a 1–10 score and a
+one-line verdict. The key stays in GitHub and never reaches the website.
+
+## Telegram alerts
+
+1. Create a bot with @BotFather and copy its token.
+2. Create public channels (e.g. `@dealradar_preisfehler`) and add the bot as an admin who can post.
+3. Add the token as repository secret `TELEGRAM_BOT_TOKEN`.
+4. Put the channel names in `telegramChannels` in `public/config.js` (preisfehler, gratis, hot, tech, gaming).
+
+## Expired deals
+
+Every round the updater checks up to 40 mydealz deal pages and removes deals marked as expired.
+Other deals drop out of the index after 7 days; researched picks after their end date.

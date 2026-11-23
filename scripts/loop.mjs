@@ -17,6 +17,14 @@ const started = Date.now();
 const git = (cwd, ...args) => execFileSync("git", args, { cwd, stdio: ["ignore", "pipe", "pipe"] }).toString().trim();
 const authHeader = (() => { try { return git(ROOT, "config", "--get", "http.https://github.com/.extraheader"); } catch { return ""; } })();
 
+// Never print secrets: strip the auth header and any token from error text.
+const redact = (msg) => {
+  let out = String(msg || "");
+  for (const v of [authHeader, authHeader.split(" ").pop(), process.env.DEEPSEEK_API_KEY, process.env.TELEGRAM_BOT_TOKEN, process.env.GH_TOKEN, process.env.GITHUB_TOKEN])
+    if (v && v.length > 8) out = out.split(v).join("***");
+  return out.replace(/AUTHORIZATION:[^\s'"]+(\s+[^\s'"]+)?/gi, "AUTHORIZATION: ***");
+};
+
 function publish() {
   const dir = mkdtempSync(join(tmpdir(), "deals-"));
   copyFileSync(join(ROOT, "public", "deals.json"), join(dir, "deals.json"));
@@ -37,7 +45,7 @@ while (Date.now() - started < DURATION) {
     const { okCount } = await run();
     if (i === 0) delete process.env.PREVIOUS_URL; // later rounds merge with the local file
     if (okCount && REPO) { publish(); console.log("  published to data branch"); }
-  } catch (e) { console.error("round failed:", e.message); }
+  } catch (e) { console.error("round failed:", redact(e.message)); }
   i++;
   const wait = INTERVAL - (Date.now() - t0);
   if (Date.now() - started + wait >= DURATION) break;
